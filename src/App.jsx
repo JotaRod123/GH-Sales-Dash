@@ -16,7 +16,6 @@ export default function App() {
         setReady(true);
         return;
       }
-
       if (session?.user) {
         setSession(session);
         const { data } = await supabase
@@ -29,7 +28,6 @@ export default function App() {
         setSession(null);
         setProfile(null);
       }
-
       setReady(true);
     });
 
