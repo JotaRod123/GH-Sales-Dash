@@ -73,7 +73,11 @@ export default function App() {
       profile={profile}
       isAdmin={profile.role === 'administrador'}
       isEspectador={profile.role === 'espectador'}
-      onSignOut={async () => { await supabase.auth.signOut(); }}
+      onSignOut={async () => {
+        await supabase.auth.signOut();
+        localStorage.clear();
+        window.location.href = '/GH-Sales-Dash/';
+      }}
     />
   );
 }
