@@ -5,34 +5,47 @@ export function useAuth() {
   const [session, setSession] = useState(undefined);
   const [profile, setProfile] = useState(null);
 
+  const fetchProfile = async (userId) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, nome, role')
+      .eq('id', userId)
+      .single();
+    return data || null;
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
+      setSession(session ?? null);
       if (session?.user) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('id, nome, role')
-          .eq('id', session.user.id)
-          .single();
-        setProfile(data || null);
+        const p = await fetchProfile(session.user.id);
+        setProfile(p);
       }
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN') setSession(session);
-      if (event === 'SIGNED_OUT') { setSession(null); setProfile(null); }
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN') {
+        setSession(session);
+        const p = await fetchProfile(session.user.id);
+        setProfile(p);
+      }
+      if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setProfile(null);
+      }
     });
 
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  const signOut = async () => supabase.auth.signOut();
+
+  return {
+    session,
+    profile,
+    loading: session === undefined,
+    isAdmin: profile?.role === 'administrador',
+    isEspectador: profile?.role === 'espectador',
+    signOut,
   };
-
-  const loading = session === undefined;
-  const isAdmin = profile?.role === 'administrador';
-  const isEspectador = profile?.role === 'espectador';
-
-  return { session, profile, loading, isAdmin, isEspectador, signOut };
 }
