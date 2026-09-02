@@ -23,13 +23,19 @@ export function useAuth() {
   }, []);
 
   const fetchProfile = async (userId) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    setProfile(data);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) console.error('Erro ao buscar profile:', error.message);
+      setProfile(data || null);
+    } catch (e) {
+      console.error('Erro inesperado:', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signOut = () => supabase.auth.signOut();
