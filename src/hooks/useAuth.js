@@ -7,38 +7,47 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = useCallback(async (userId) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, nome, role')
-      .eq('id', userId)
-      .single();
-    if (error) {
-      console.error('Erro ao buscar perfil:', error.message);
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, nome, role')
+        .eq('id', userId)
+        .single();
+      return data || null;
+    } catch {
       return null;
     }
-    return data;
   }, []);
 
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    const init = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        setSession(session);
+        if (session?.user) {
+          const p = await fetchProfile(session.user.id);
+          if (mounted) setProfile(p);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    init();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!mounted) return;
       setSession(session);
       if (session?.user) {
         const p = await fetchProfile(session.user.id);
         if (mounted) setProfile(p);
-      }
-      if (mounted) setLoading(false);
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      if (session?.user) {
-        const p = await fetchProfile(session.user.id);
-        setProfile(p);
       } else {
-        setProfile(null);
+        if (mounted) setProfile(null);
       }
     });
 
@@ -49,6 +58,8 @@ export function useAuth() {
   }, [fetchProfile]);
 
   const signOut = async () => {
+    setProfile(null);
+    setSession(null);
     await supabase.auth.signOut();
   };
 
