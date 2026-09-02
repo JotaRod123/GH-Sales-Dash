@@ -9,6 +9,7 @@ export default function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      await new Promise(r => setTimeout(r, 500));
       setSession(session ?? null);
       if (session?.user) {
         const { data } = await supabase
@@ -46,11 +47,11 @@ export default function App() {
     </div>
   );
 
-  if (!session) return <LoginPage setSession={setSession} setProfile={setProfile} />;
+  if (!session) return <LoginPage />;
 
   if (!profile) return (
     <div style={{ minHeight: '100vh', background: '#0D1208', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8A9B70', fontFamily: 'Inter, system-ui, sans-serif', fontSize: 14 }}>
-      Carregando perfil…
+      Carregando…
     </div>
   );
 
