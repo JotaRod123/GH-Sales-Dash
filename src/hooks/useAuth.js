@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
 export function useAuth() {
@@ -6,49 +6,49 @@ export function useAuth() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchProfile = useCallback(async (userId) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, nome, role')
+      .eq('id', userId)
+      .single();
+    if (error) {
+      console.error('Erro ao buscar perfil:', error.message);
+      return null;
+    }
+    return data;
+  }, []);
+
   useEffect(() => {
     let mounted = true;
 
-    const fetchProfile = async (userId) => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-      if (mounted) {
-        setProfile(data || null);
-        setLoading(false);
-      }
-    };
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!mounted) return;
       setSession(session);
-      if (session?.user?.id) {
-        fetchProfile(session.user.id);
-      } else {
-        setLoading(false);
+      if (session?.user) {
+        const p = await fetchProfile(session.user.id);
+        if (mounted) setProfile(p);
       }
+      if (mounted) setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!mounted) return;
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
-      if (event === 'SIGNED_OUT') {
+      if (session?.user) {
+        const p = await fetchProfile(session.user.id);
+        setProfile(p);
+      } else {
         setProfile(null);
-        setLoading(false);
       }
     });
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      listener.subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchProfile]);
 
   const signOut = async () => {
-    setProfile(null);
-    setSession(null);
     await supabase.auth.signOut();
   };
 
