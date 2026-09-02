@@ -1,19 +1,65 @@
-import { useAuth } from './hooks/useAuth';
+import { useState, useEffect } from 'react';
+import { supabase } from './lib/supabase';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 
 export default function App() {
-  const { session, profile, loading, isAdmin, isEspectador, signOut } = useAuth();
+  const [session, setSession] = useState(undefined);
+  const [profile, setProfile] = useState(null);
 
-  if (loading) return (
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setSession(session ?? null);
+      if (session?.user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, nome, role')
+          .eq('id', session.user.id)
+          .single();
+        setProfile(data || null);
+      }
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setProfile(null);
+        return;
+      }
+      if (session?.user) {
+        setSession(session);
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, nome, role')
+          .eq('id', session.user.id)
+          .single();
+        setProfile(data || null);
+      }
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  if (session === undefined) return (
     <div style={{ minHeight: '100vh', background: '#0D1208', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8A9B70', fontFamily: 'Inter, system-ui, sans-serif', fontSize: 14 }}>
       Carregando…
     </div>
   );
 
-  if (!session) return <LoginPage />;
+  if (!session) return <LoginPage setSession={setSession} setProfile={setProfile} />;
 
-  if (!profile) return <LoginPage />;
+  if (!profile) return (
+    <div style={{ minHeight: '100vh', background: '#0D1208', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8A9B70', fontFamily: 'Inter, system-ui, sans-serif', fontSize: 14 }}>
+      Carregando perfil…
+    </div>
+  );
 
-  return <Dashboard profile={profile} isAdmin={isAdmin} isEspectador={isEspectador} onSignOut={signOut} />;
+  return (
+    <Dashboard
+      profile={profile}
+      isAdmin={profile.role === 'administrador'}
+      isEspectador={profile.role === 'espectador'}
+      onSignOut={async () => { await supabase.auth.signOut(); }}
+    />
+  );
 }
