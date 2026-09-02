@@ -139,7 +139,7 @@ function KpiProspCard({ kpiKey, value, onChange, readOnly }) {
 }
 
 const EMPTY_PROSP = { nome: '', contato: '', status: 'Contatado', observacao: '' };
-const EMPTY_VENDA = { nome: '', telefone: '', dataVenda: today(), origem: 'Prospeccao', produto: '', produtoOutros: '', valor: '', observacao: '' };
+const EMPTY_VENDA = { nome: '', telefone: '', dataVenda: today(), origem: 'Prospeccao', produto: 'Selecione', produtoOutros: '', valor: '', observacao: '' };
 
 export default function TabProspeccao({ kpisProsp, prospects, readOnly, viewLabel, saveDay, addProspect, updateProspect, deleteProspect, addVenda, refetchVendas }) {
   const normalizedKpis = kpisProsp.map(normalizeProsp);
@@ -190,14 +190,16 @@ export default function TabProspeccao({ kpisProsp, prospects, readOnly, viewLabe
 
   const handleConvert = async () => {
     const produto = vendaForm.produto === 'Outros' ? vendaForm.produtoOutros : vendaForm.produto;
-    if (!produto || !vendaForm.valor) return;
+    if (!produto || produto === 'Selecione' || !vendaForm.valor || isNaN(parseFloat(vendaForm.valor))) return;
     setSavingVenda(true);
-    await addVenda({ ...vendaForm, produto, prospectId: convertProsp.id });
-    await updateProspect(convertProsp.id, { ...convertProsp, status: 'Convertido' });
-    if (refetchVendas) await refetchVendas();
+    const { error } = await addVenda({ ...vendaForm, produto, prospectId: convertProsp.id });
+    if (!error) {
+      await updateProspect(convertProsp.id, { ...convertProsp, status: 'Convertido' });
+      if (refetchVendas) await refetchVendas();
+      setConvertProsp(null);
+      setVendaForm(Object.assign({}, EMPTY_VENDA));
+    }
     setSavingVenda(false);
-    setConvertProsp(null);
-    setVendaForm(Object.assign({}, EMPTY_VENDA));
   };
 
   const now = new Date();
