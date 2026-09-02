@@ -128,9 +128,11 @@ export default function Dashboard({ profile, isAdmin, isEspectador, onSignOut })
           >
             {isAdmin && <option value="mine">Meus dados</option>}
             <option value="team">Consolidado da equipe</option>
-            {teamKpisHook.admins.map((a) => (
-              <option key={a.id} value={a.id}>{a.nome}</option>
-            ))}
+            {teamKpisHook.admins
+              .filter((a) => a.id !== profile.id)
+              .map((a) => (
+                <option key={a.id} value={a.id}>{a.nome}</option>
+              ))}
           </select>
         )}
 
