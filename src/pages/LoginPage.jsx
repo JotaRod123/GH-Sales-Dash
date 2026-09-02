@@ -43,3 +43,67 @@ export default function LoginPage() {
           </div>
         </div>
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: T.textSec }}>
+              E-mail
+            </label>
+            <input
+              type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              placeholder="seu@email.com" required
+              onFocus={() => setFocusEmail(true)}
+              onBlur={() => setFocusEmail(false)}
+              style={{
+                background: T.bg,
+                border: '1px solid ' + (focusEmail ? T.accent : T.border),
+                borderRadius: 7, color: T.text, fontSize: 14, padding: '10px 13px',
+                outline: 'none', width: '100%', boxSizing: 'border-box',
+                colorScheme: 'dark',
+                boxShadow: focusEmail ? '0 0 0 3px ' + T.accentDim : 'none',
+                transition: 'border-color .15s, box-shadow .15s',
+              }}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: T.textSec }}>
+              Senha
+            </label>
+            <input
+              type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••" required
+              onFocus={() => setFocusPassword(true)}
+              onBlur={() => setFocusPassword(false)}
+              style={{
+                background: T.bg,
+                border: '1px solid ' + (focusPassword ? T.accent : T.border),
+                borderRadius: 7, color: T.text, fontSize: 14, padding: '10px 13px',
+                outline: 'none', width: '100%', boxSizing: 'border-box',
+                colorScheme: 'dark',
+                boxShadow: focusPassword ? '0 0 0 3px ' + T.accentDim : 'none',
+                transition: 'border-color .15s, box-shadow .15s',
+              }}
+            />
+          </div>
+          {error && (
+            <div style={{
+              background: 'rgba(200,90,75,0.1)', border: '1px solid rgba(200,90,75,0.3)',
+              borderRadius: 7, padding: '10px 13px', color: T.danger, fontSize: 13,
+            }}>
+              {error}
+            </div>
+          )}
+          <button
+            type="submit" disabled={loading}
+            style={{
+              background: T.accent, color: '#0D1208', border: 'none',
+              borderRadius: 7, padding: '11px', fontSize: 14, fontWeight: 700,
+              cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
+              marginTop: 4, fontFamily: 'inherit',
+            }}
+          >
+            {loading ? 'Entrando…' : 'Entrar'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
