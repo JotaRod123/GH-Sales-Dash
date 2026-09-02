@@ -14,17 +14,17 @@ export const T = {
   warning: '#C8A84B',
   danger: '#C85A4B',
   kpi: {
-    leadsNovos: '#6DB85C',
-    abordagem: '#C8A84B',
-    fup: '#8AB05C',
-    emNegociacao: '#A8C870',
-    fechados: '#D4A84B',
+    leadsNovos: '#6DB85C',   // verde
+    abordagem: '#C8A84B',    // dourado
+    fup: '#5B9BD5',          // azul suave
+    emNegociacao: '#C87E4B', // laranja terra
+    fechados: '#9B6DB8',     // roxo suave
   },
   prosp: {
-    prospectados: '#C8A84B',
-    contatados: '#8AB05C',
-    responderam: '#6DB85C',
-    reuniao: '#A8C870',
-    convertido: '#D4A84B',
+    prospectados: '#C8A84B', // dourado
+    contatados: '#5B9BD5',   // azul suave
+    responderam: '#6DB85C',  // verde
+    reuniao: '#C87E4B',      // laranja terra
+    convertido: '#9B6DB8',   // roxo suave
   },
 };
