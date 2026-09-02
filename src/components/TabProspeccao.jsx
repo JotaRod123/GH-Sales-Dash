@@ -191,8 +191,11 @@ export default function TabProspeccao({ kpisProsp, prospects, readOnly, viewLabe
   const handleConvert = async () => {
     const produto = vendaForm.produto === 'Outros' ? vendaForm.produtoOutros : vendaForm.produto;
     if (!produto || produto === 'Selecione' || !vendaForm.valor || isNaN(parseFloat(vendaForm.valor))) return;
+    const dataVenda = vendaForm.dataVenda
+      ? new Date(vendaForm.dataVenda).toISOString().slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
     setSavingVenda(true);
-    const { error } = await addVenda({ ...vendaForm, produto, prospectId: convertProsp.id });
+    const { error } = await addVenda({ ...vendaForm, produto, dataVenda, prospectId: convertProsp.id });
     if (!error) {
       await updateProspect(convertProsp.id, { ...convertProsp, status: 'Convertido' });
       if (refetchVendas) await refetchVendas();
