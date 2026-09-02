@@ -24,10 +24,12 @@ export function useAuth() {
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN') {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
         setSession(session);
-        const p = await fetchProfile(session.user.id);
-        setProfile(p);
+        if (session?.user) {
+          const p = await fetchProfile(session.user.id);
+          setProfile(p);
+        }
       }
       if (event === 'SIGNED_OUT') {
         setSession(null);
