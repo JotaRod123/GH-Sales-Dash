@@ -1,6 +1,30 @@
-import { createClient } from '@supabase/supabase-js';
-
-const SUPABASE_URL = 'https://smsbarhdhiymmmmbsmxw.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtc2JhcmhkaGl5bW1tbWJzbXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzMDc0NzUsImV4cCI6MjEwMzg4MzQ3NX0.oq5Lk2_aKgLD-dCCfsFLZ4P8X7-FlLDFrw5taY3_nEo';
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const T = {
+  bg: '#0D1208',
+  surface: '#141A0C',
+  surfaceHov: '#1C2412',
+  overlay: '#222E15',
+  border: 'rgba(180,160,60,0.13)',
+  borderMid: 'rgba(180,160,60,0.24)',
+  text: '#E8EDDF',
+  textSec: '#8A9B70',
+  textMuted: '#4A5A35',
+  accent: '#C8A84B',
+  accentDim: 'rgba(200,168,75,0.13)',
+  success: '#6DB85C',
+  warning: '#C8A84B',
+  danger: '#C85A4B',
+  kpi: {
+    leadsNovos: '#6DB85C',
+    abordagem: '#C8A84B',
+    fup: '#8AB05C',
+    emNegociacao: '#A8C870',
+    fechados: '#D4A84B',
+  },
+  prosp: {
+    prospectados: '#C8A84B',
+    contatados: '#8AB05C',
+    responderam: '#6DB85C',
+    reuniao: '#A8C870',
+    convertido: '#D4A84B',
+  },
+};
