@@ -8,27 +8,47 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
 
+  const loadProfile = async (user) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, nome, role')
+      .eq('id', user.id)
+      .single();
+    return data || null;
+  };
+
   useEffect(() => {
+    let settled = false;
+
+    const settle = async (session) => {
+      if (settled) return;
+      settled = true;
+      setSession(session ?? null);
+      if (session?.user) {
+        const p = await loadProfile(session.user);
+        setProfile(p);
+      }
+      setReady(true);
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => settle(session));
+
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT') {
+        settled = false;
         setSession(null);
         setProfile(null);
         setReady(true);
         return;
       }
-      if (session?.user) {
+      if (!settled) {
+        settle(session);
+      } else if (session?.user) {
         setSession(session);
-        const { data } = await supabase
-          .from('profiles')
-          .select('id, nome, role')
-          .eq('id', session.user.id)
-          .single();
-        setProfile(data || null);
-      } else {
-        setSession(null);
-        setProfile(null);
+        const p = await loadProfile(session.user);
+        setProfile(p);
+        setReady(true);
       }
-      setReady(true);
     });
 
     return () => listener.subscription.unsubscribe();
