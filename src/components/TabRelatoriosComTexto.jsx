@@ -8,6 +8,7 @@ const n = (v) => Number(v || 0);
 export default function TabRelatoriosComTexto(props) {
   const { kpis = [], kpisProsp = [], vendas = [], viewLabel = 'Meus dados' } = props;
   const [copied, setCopied] = useState(false);
+  const [showWhatsAppReport, setShowWhatsAppReport] = useState(false);
 
   const reportText = useMemo(() => {
     const now = new Date();
@@ -66,16 +67,26 @@ export default function TabRelatoriosComTexto(props) {
   };
 
   return <div style={{display:'flex',flexDirection:'column',gap:18}}>
-    <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,padding:18}}>
+    <div style={{display:'flex',justifyContent:'flex-end'}}>
+      <button
+        onClick={() => setShowWhatsAppReport((v) => !v)}
+        style={{background:T.accent,color:'#08111B',border:0,borderRadius:9,padding:'10px 14px',fontWeight:800,cursor:'pointer'}}
+      >
+        {showWhatsAppReport ? 'Ocultar relatório para WhatsApp' : 'Gerar relatório para WhatsApp'}
+      </button>
+    </div>
+
+    {showWhatsAppReport && <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,padding:18}}>
       <div style={{display:'flex',justifyContent:'space-between',gap:14,alignItems:'center',flexWrap:'wrap'}}>
         <div>
           <div style={{fontSize:15,fontWeight:800,color:T.text}}>Relatório para WhatsApp</div>
-          <div style={{fontSize:12,color:T.textSec,marginTop:4}}>Gera o resumo do mês atual em texto e copia tudo com um clique.</div>
+          <div style={{fontSize:12,color:T.textSec,marginTop:4}}>Resumo do mês atual pronto para copiar e enviar.</div>
         </div>
         <button onClick={copyReport} style={{background:copied?T.success:T.accent,color:'#08111B',border:0,borderRadius:9,padding:'10px 14px',fontWeight:800,cursor:'pointer'}}>{copied?'Copiado!':'Copiar relatório'}</button>
       </div>
       <pre style={{whiteSpace:'pre-wrap',fontFamily:'inherit',fontSize:12,lineHeight:1.55,color:T.textSec,background:T.bg,border:`1px solid ${T.border}`,borderRadius:10,padding:14,margin:'14px 0 0'}}>{reportText}</pre>
-    </div>
+    </div>}
+
     <TabRelatorios {...props} />
   </div>;
 }
