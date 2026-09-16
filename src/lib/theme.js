@@ -1,30 +1,30 @@
 export const T = {
-  bg: '#0D1208',
-  surface: '#141A0C',
-  surfaceHov: '#1C2412',
-  overlay: '#222E15',
-  border: 'rgba(180,160,60,0.13)',
-  borderMid: 'rgba(180,160,60,0.24)',
-  text: '#E8EDDF',
-  textSec: '#8A9B70',
-  textMuted: '#4A5A35',
-  accent: '#C8A84B',
-  accentDim: 'rgba(200,168,75,0.13)',
-  success: '#6DB85C',
-  warning: '#C8A84B',
-  danger: '#C85A4B',
+  bg: '#0A1420',
+  surface: '#111E2B',
+  surfaceHov: '#182838',
+  overlay: '#1E3042',
+  border: '#2A3A4B',
+  borderMid: '#3A4D60',
+  text: '#F7F4EA',
+  textSec: '#A9B1B8',
+  textMuted: '#6F7B86',
+  accent: '#D6A72C',
+  accentDim: 'rgba(214,167,44,0.14)',
+  success: '#5FA978',
+  warning: '#D6A72C',
+  danger: '#B55353',
   kpi: {
-    leadsNovos: '#6DB85C',   // verde
-    abordagem: '#C8A84B',    // dourado
-    fup: '#5B9BD5',          // azul suave
-    emNegociacao: '#C87E4B', // laranja terra
-    fechados: '#9B6DB8',     // roxo suave
+    leadsNovos: '#D6A72C',
+    abordagem: '#F0C75E',
+    fup: '#7EA6C9',
+    emNegociacao: '#C98A3A',
+    fechados: '#5FA978',
   },
   prosp: {
-    prospectados: '#C8A84B', // dourado
-    contatados: '#5B9BD5',   // azul suave
-    responderam: '#6DB85C',  // verde
-    reuniao: '#C87E4B',      // laranja terra
-    convertido: '#9B6DB8',   // roxo suave
+    prospectados: '#D6A72C',
+    contatados: '#7EA6C9',
+    responderam: '#5FA978',
+    reuniao: '#C98A3A',
+    convertido: '#F0C75E',
   },
 };
