@@ -9,7 +9,7 @@ import TabProspeccao from '../components/TabProspeccao';
 import TabPipeline from '../components/TabPipeline';
 import TabCalls from '../components/TabCalls';
 import TabAcoes from '../components/TabAcoes';
-import TabCRM from '../components/TabCRM';
+import TabCRM from '../components/TabCRMComComissao';
 import TabMetas from '../components/TabMetas';
 import TabRelatorios from '../components/TabRelatoriosComTexto';
 import { T } from '../lib/theme';
