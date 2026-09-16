@@ -4,12 +4,12 @@ import { useKpisProspeccao, useTeamKpisProspeccao } from '../hooks/useKpisProspe
 import { useProspects, useTeamProspects } from '../hooks/useProspects';
 import { useVendas, useTeamVendas } from '../hooks/useVendas';
 import { useSalesOS } from '../hooks/useSalesOS';
-import TabVisaoGeral from '../components/TabVisaoGeral';
+import TabVisaoGeral from '../components/TabVisaoGeralComComissao';
 import TabProspeccao from '../components/TabProspeccao';
 import TabPipeline from '../components/TabPipeline';
 import TabCalls from '../components/TabCalls';
 import TabAcoes from '../components/TabAcoes';
-import TabCRM from '../components/TabCRMComComissao';
+import TabCRM from '../components/TabCRM';
 import TabMetas from '../components/TabMetas';
 import TabRelatorios from '../components/TabRelatoriosComTexto';
 import { T } from '../lib/theme';
