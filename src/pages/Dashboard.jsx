@@ -14,12 +14,16 @@ import TabMetas from '../components/TabMetas';
 import TabRelatorios from '../components/TabRelatorios';
 import { T } from '../lib/theme';
 
-const today = () => new Date().toISOString().slice(0, 10);
-const formatDateBR = (s) => {
-  if (!s) return '';
-  const parts = s.split('-');
-  return parts[2] + '/' + parts[1] + '/' + parts[0];
-};
+const NAV = [
+  { key: 'visao', label: 'Dashboard' },
+  { key: 'pipeline', label: 'Pipeline' },
+  { key: 'prospeccao', label: 'Prospecção' },
+  { key: 'calls', label: 'Calls' },
+  { key: 'acoes', label: 'Próximas Ações' },
+  { key: 'crm', label: 'Vendas' },
+  { key: 'relatorios', label: 'Relatórios' },
+  { key: 'metas', label: 'Metas' },
+];
 
 export default function Dashboard({ profile, isAdmin, isEspectador, onSignOut }) {
   const [tab, setTab] = useState('visao');
@@ -36,17 +40,6 @@ export default function Dashboard({ profile, isAdmin, isEspectador, onSignOut })
   const teamKpisProspHook = useTeamKpisProspeccao(canSeeTeam);
   const teamProspectsHook = useTeamProspects(canSeeTeam);
   const teamVendasHook = useTeamVendas(canSeeTeam);
-
-  const NAV = [
-    { key: 'visao', label: 'Visão Geral' },
-    { key: 'prospeccao', label: 'Prospecção' },
-    { key: 'pipeline', label: 'Pipeline' },
-    { key: 'calls', label: 'Calls' },
-    { key: 'acoes', label: 'Próximas Ações' },
-    { key: 'crm', label: 'Vendas' },
-    { key: 'metas', label: 'Metas' },
-    { key: 'relatorios', label: 'Relatórios' },
-  ];
 
   const getDisplay = () => {
     if (viewMode === 'mine') {
@@ -68,45 +61,75 @@ export default function Dashboard({ profile, isAdmin, isEspectador, onSignOut })
 
   const display = getDisplay();
   const ownModule = viewMode === 'mine';
-  const teamNotice = <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:24, color:T.textSec }}>Calls, próximas ações e metas são operacionais por usuário. Selecione <b style={{color:T.text}}>Meus dados</b> para editar e visualizar esses módulos.</div>;
+  const currentLabel = NAV.find((n) => n.key === tab)?.label || 'Dashboard';
+  const teamNotice = <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:14, padding:24, color:T.textSec }}>Calls, próximas ações e metas são operacionais por usuário. Selecione <b style={{color:T.text}}>Meus dados</b> para editar e visualizar esses módulos.</div>;
 
   return (
-    <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: "'Inter', 'SF Pro Display', -apple-system, system-ui, sans-serif", WebkitFontSmoothing: 'antialiased' }}>
-      <header style={{ borderBottom: '1px solid ' + T.border, background: T.surface, padding: '10px 22px', position: 'sticky', top: 0, zIndex: 200 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:18, flexWrap:'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 7, background: 'linear-gradient(135deg, #D6A72C 0%, #8A6A18 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#08131F' }}>GH</div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Sales OS</span>
+    <div style={{ minHeight:'100vh', background:T.bg, color:T.text, fontFamily:"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+      <style>{`
+        .gh-shell{display:grid;grid-template-columns:230px minmax(0,1fr);min-height:100vh}
+        .gh-sidebar{position:sticky;top:0;height:100vh;background:#08111B;border-right:1px solid ${T.border};padding:18px 12px;display:flex;flex-direction:column}
+        .gh-nav{display:flex;flex-direction:column;gap:4px}
+        .gh-main{padding:22px 24px 34px;min-width:0}
+        .gh-topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
+        .gh-mobile-nav{display:none}
+        @media(max-width:900px){
+          .gh-shell{display:block}.gh-sidebar{position:relative;height:auto;border-right:0;border-bottom:1px solid ${T.border};padding:12px}.gh-nav{display:none}.gh-mobile-nav{display:flex;gap:6px;overflow:auto;padding-top:10px}.gh-main{padding:16px}.gh-topbar{align-items:flex-start;flex-direction:column}
+        }
+      `}</style>
+      <div className="gh-shell">
+        <aside className="gh-sidebar">
+          <div style={{display:'flex',alignItems:'center',gap:10,padding:'4px 8px 20px'}}>
+            <div style={{width:34,height:34,borderRadius:9,background:'linear-gradient(135deg,#F0C75E,#A87F17)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,color:'#08111B',fontSize:12}}>GH</div>
+            <div><div style={{fontSize:15,fontWeight:800}}>Sales <span style={{color:T.accent}}>OS</span></div><div style={{fontSize:10,color:T.textMuted,marginTop:2}}>Closer Command Center</div></div>
           </div>
 
-          <nav style={{ display:'flex', gap:2, flexWrap:'wrap', flex:1 }}>
-            {NAV.map((n) => {
-              const active = tab === n.key;
-              return <button key={n.key} onClick={() => setTab(n.key)} style={{ background: active ? T.surfaceHov : 'transparent', border:'none', borderRadius:6, color:active ? T.text : T.textSec, cursor:'pointer', fontSize:12, fontWeight:active?700:400, padding:'7px 10px', fontFamily:'inherit' }}>{n.label}</button>;
+          <nav className="gh-nav">
+            {NAV.map((n)=>{
+              const active=tab===n.key;
+              return <button key={n.key} onClick={()=>setTab(n.key)} style={{width:'100%',textAlign:'left',border:active?`1px solid ${T.borderMid}`:'1px solid transparent',background:active?T.surfaceHov:'transparent',color:active?T.text:T.textSec,borderRadius:10,padding:'11px 12px',cursor:'pointer',fontSize:13,fontWeight:active?700:500}}>{n.label}</button>;
             })}
           </nav>
 
-          {canSeeTeam && <select value={viewMode} onChange={(e) => setViewMode(e.target.value)} style={{ background:T.bg, border:'1px solid '+T.border, borderRadius:6, color:T.text, fontSize:12, padding:'6px 9px' }}>
-            {isAdmin && <option value="mine">Meus dados</option>}
-            <option value="team">Consolidado da equipe</option>
-            {teamKpisHook.admins.filter((a)=>a.id!==profile.id).map((a)=><option key={a.id} value={a.id}>{a.nome}</option>)}
-          </select>}
+          <div className="gh-mobile-nav">
+            {NAV.map((n)=>{
+              const active=tab===n.key;
+              return <button key={n.key} onClick={()=>setTab(n.key)} style={{whiteSpace:'nowrap',border:`1px solid ${active?T.borderMid:T.border}`,background:active?T.surfaceHov:'transparent',color:active?T.text:T.textSec,borderRadius:9,padding:'8px 10px',fontSize:12}}>{n.label}</button>;
+            })}
+          </div>
 
-          <span style={{ color:T.textMuted, fontSize:11 }}>{formatDateBR(today())}</span>
-          <button onClick={onSignOut} style={{ background:'transparent', border:'1px solid '+T.border, borderRadius:6, color:T.textSec, fontSize:12, padding:'6px 10px', cursor:'pointer' }}>Sair</button>
-        </div>
-      </header>
+          <div style={{marginTop:'auto',padding:'16px 8px 6px',borderTop:`1px solid ${T.border}`}}>
+            <div style={{fontSize:11,color:T.textMuted}}>Logado como</div>
+            <div style={{fontSize:13,fontWeight:700,marginTop:3}}>{profile.nome}</div>
+            <button onClick={onSignOut} style={{marginTop:10,width:'100%',background:'transparent',border:`1px solid ${T.border}`,borderRadius:8,color:T.textSec,padding:'8px 10px',cursor:'pointer'}}>Sair</button>
+          </div>
+        </aside>
 
-      <main style={{ maxWidth: 1500, margin: '0 auto', padding: '30px 24px' }}>
-        {tab === 'visao' && <TabVisaoGeral kpis={display.kpis} vendas={display.vendas} readOnly={display.readOnly} viewLabel={display.label} saveDay={ownKpis.saveDay} />}
-        {tab === 'prospeccao' && <TabProspeccao kpisProsp={display.kpisProsp} prospects={display.prospects} readOnly={display.readOnly} viewLabel={display.label} saveDay={ownKpisProsp.saveDay} addProspect={ownProspects.addProspect} updateProspect={ownProspects.updateProspect} deleteProspect={ownProspects.deleteProspect} addVenda={ownVendas.addVenda} refetchVendas={ownVendas.refetch} />}
-        {tab === 'pipeline' && <TabPipeline prospects={display.prospects} readOnly={display.readOnly} updateProspect={ownProspects.updateProspect} />}
-        {tab === 'calls' && (ownModule ? <TabCalls calls={salesOS.calls} readOnly={false} addCall={salesOS.addCall} updateCall={salesOS.updateCall} deleteCall={salesOS.deleteCall} /> : teamNotice)}
-        {tab === 'acoes' && (ownModule ? <TabAcoes acoes={salesOS.acoes} readOnly={false} addAcao={salesOS.addAcao} updateAcao={salesOS.updateAcao} deleteAcao={salesOS.deleteAcao} /> : teamNotice)}
-        {tab === 'crm' && <TabCRM vendas={display.vendas} readOnly={display.readOnly} viewLabel={display.label} addVenda={ownVendas.addVenda} updateVenda={ownVendas.updateVenda} deleteVenda={ownVendas.deleteVenda} />}
-        {tab === 'metas' && (ownModule ? <TabMetas metas={salesOS.metas} vendas={ownVendas.vendas} calls={salesOS.calls} kpisProsp={ownKpisProsp.kpis} readOnly={false} upsertMeta={salesOS.upsertMeta} /> : teamNotice)}
-        {tab === 'relatorios' && <TabRelatorios kpis={display.kpis} kpisProsp={display.kpisProsp} vendas={display.vendas} viewLabel={display.label} isAdmin={isAdmin} isTeamView={viewMode === 'team'} admins={teamKpisHook.admins} teamKpis={teamKpisHook.teamKpis} teamKpisProsp={teamKpisProspHook.teamKpis} teamVendas={teamVendasHook.teamVendas} />}
-      </main>
+        <main className="gh-main">
+          <div className="gh-topbar">
+            <div>
+              <div style={{fontSize:11,color:T.textMuted,textTransform:'uppercase',letterSpacing:'.08em'}}>GH Sales OS</div>
+              <h1 style={{fontSize:26,margin:'4px 0 0',lineHeight:1.1}}>{currentLabel}</h1>
+            </div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              {canSeeTeam && <select value={viewMode} onChange={(e)=>setViewMode(e.target.value)} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:9,color:T.text,padding:'9px 10px',fontSize:12}}>
+                {isAdmin && <option value="mine">Meus dados</option>}
+                <option value="team">Consolidado da equipe</option>
+                {teamKpisHook.admins.filter((a)=>a.id!==profile.id).map((a)=><option key={a.id} value={a.id}>{a.nome}</option>)}
+              </select>}
+            </div>
+          </div>
+
+          {tab === 'visao' && <TabVisaoGeral kpis={display.kpis} vendas={display.vendas} readOnly={display.readOnly} viewLabel={display.label} saveDay={ownKpis.saveDay} />}
+          {tab === 'prospeccao' && <TabProspeccao kpisProsp={display.kpisProsp} prospects={display.prospects} readOnly={display.readOnly} viewLabel={display.label} saveDay={ownKpisProsp.saveDay} addProspect={ownProspects.addProspect} updateProspect={ownProspects.updateProspect} deleteProspect={ownProspects.deleteProspect} addVenda={ownVendas.addVenda} refetchVendas={ownVendas.refetch} />}
+          {tab === 'pipeline' && <TabPipeline prospects={display.prospects} readOnly={display.readOnly} updateProspect={ownProspects.updateProspect} />}
+          {tab === 'calls' && (ownModule ? <TabCalls calls={salesOS.calls} readOnly={false} addCall={salesOS.addCall} updateCall={salesOS.updateCall} deleteCall={salesOS.deleteCall} /> : teamNotice)}
+          {tab === 'acoes' && (ownModule ? <TabAcoes acoes={salesOS.acoes} readOnly={false} addAcao={salesOS.addAcao} updateAcao={salesOS.updateAcao} deleteAcao={salesOS.deleteAcao} /> : teamNotice)}
+          {tab === 'crm' && <TabCRM vendas={display.vendas} readOnly={display.readOnly} viewLabel={display.label} addVenda={ownVendas.addVenda} updateVenda={ownVendas.updateVenda} deleteVenda={ownVendas.deleteVenda} />}
+          {tab === 'metas' && (ownModule ? <TabMetas metas={salesOS.metas} vendas={ownVendas.vendas} calls={salesOS.calls} kpisProsp={ownKpisProsp.kpis} readOnly={false} upsertMeta={salesOS.upsertMeta} /> : teamNotice)}
+          {tab === 'relatorios' && <TabRelatorios kpis={display.kpis} kpisProsp={display.kpisProsp} vendas={display.vendas} viewLabel={display.label} isAdmin={isAdmin} isTeamView={viewMode === 'team'} admins={teamKpisHook.admins} teamKpis={teamKpisHook.teamKpis} teamKpisProsp={teamKpisProspHook.teamKpis} teamVendas={teamVendasHook.teamVendas} />}
+        </main>
+      </div>
     </div>
   );
 }
