@@ -25,18 +25,37 @@ export function useKpis(userId) {
     const payload = {
       user_id: userId,
       data: date || today(),
-      leads_novos: values.leadsNovos,
-      abordagem: values.abordagem,
-      fup: values.fup,
-      em_negociacao: values.emNegociacao,
-      fechados: values.fechados,
+      leads_novos: Number(values.leadsNovos || 0),
+      abordagem: Number(values.abordagem || 0),
+      fup: Number(values.fup || 0),
+      em_negociacao: Number(values.emNegociacao || 0),
+      fechados: Number(values.fechados || 0),
       updated_at: new Date().toISOString(),
     };
-    const { error } = await supabase
+
+    const previous = kpis;
+    setKpis((prev) => {
+      const exists = prev.some((item) => item.data === payload.data);
+      if (exists) return prev.map((item) => item.data === payload.data ? { ...item, ...payload } : item);
+      return [...prev, { id: `temp-${payload.data}`, ...payload }].sort((a, b) => a.data.localeCompare(b.data));
+    });
+
+    const { data, error } = await supabase
       .from('kpis_diarios')
-      .upsert(payload, { onConflict: 'user_id,data' });
-    if (!error) await fetch();
-    return { error };
+      .upsert(payload, { onConflict: 'user_id,data' })
+      .select('*')
+      .single();
+
+    if (error) {
+      setKpis(previous);
+      return { error };
+    }
+
+    setKpis((prev) => {
+      const without = prev.filter((item) => item.data !== payload.data);
+      return [...without, data].sort((a, b) => a.data.localeCompare(b.data));
+    });
+    return { error: null };
   };
 
   return { kpis, loading, saveDay, refetch: fetch };
