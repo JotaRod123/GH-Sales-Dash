@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
+const normalizeOrigem = (origem) => origem === 'Tráfego' || origem === 'Trafego' ? 'Tráfego - Clint' : origem || null;
+
 const normalizeProspect = (p) => ({
   nome: p.nome,
   contato: p.contato || p.whatsapp || p.instagram || '',
@@ -11,7 +13,7 @@ const normalizeProspect = (p) => ({
   email: p.email || null,
   especialidade: p.especialidade || null,
   cidade: p.cidade || null,
-  origem: p.origem || null,
+  origem: normalizeOrigem(p.origem),
   icp_tipo: p.icp_tipo || null,
   lead_score: p.lead_score || null,
   produto_potencial: p.produto_potencial || null,
@@ -23,6 +25,8 @@ const normalizeProspect = (p) => ({
   motivo_perda: p.motivo_perda || null,
 });
 
+const normalizeFetched = (row) => ({ ...row, origem: normalizeOrigem(row.origem) });
+
 export function useProspects(userId) {
   const [prospects, setProspects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,29 +35,47 @@ export function useProspects(userId) {
     if (!userId) return;
     setLoading(true);
     const { data } = await supabase.from('prospects').select('*').eq('user_id', userId).order('created_at', { ascending: false });
-    setProspects(data || []);
+    setProspects((data || []).map(normalizeFetched));
     setLoading(false);
   }, [userId]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
   const addProspect = async (p) => {
-    const { error } = await supabase.from('prospects').insert({ user_id: userId, ...normalizeProspect(p) });
-    if (!error) await fetch();
-    return { error };
+    const payload = { user_id: userId, ...normalizeProspect(p) };
+    const tempId = `temp-${Date.now()}`;
+    const optimistic = { id: tempId, created_at: new Date().toISOString(), ...payload };
+    setProspects((prev) => [optimistic, ...prev]);
+
+    const { data, error } = await supabase.from('prospects').insert(payload).select('*').single();
+    if (error) {
+      setProspects((prev) => prev.filter((item) => item.id !== tempId));
+      return { error };
+    }
+    setProspects((prev) => prev.map((item) => item.id === tempId ? normalizeFetched(data) : item));
+    return { error: null };
   };
 
   const updateProspect = async (id, patch) => {
     const current = prospects.find((p) => p.id === id) || {};
     const merged = normalizeProspect({ ...current, ...patch });
-    const { error } = await supabase.from('prospects').update({ ...merged, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', userId);
-    if (!error) await fetch();
-    return { error };
+    const previous = prospects;
+    setProspects((prev) => prev.map((item) => item.id === id ? { ...item, ...merged, updated_at: new Date().toISOString() } : item));
+
+    const { data, error } = await supabase.from('prospects').update({ ...merged, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', userId).select('*').single();
+    if (error) {
+      setProspects(previous);
+      return { error };
+    }
+    setProspects((prev) => prev.map((item) => item.id === id ? normalizeFetched(data) : item));
+    return { error: null };
   };
 
   const deleteProspect = async (id) => {
+    const previous = prospects;
+    setProspects((prev) => prev.filter((item) => item.id !== id));
     const { error } = await supabase.from('prospects').delete().eq('id', id).eq('user_id', userId);
-    if (!error) await fetch();
+    if (error) setProspects(previous);
     return { error };
   };
 
@@ -68,7 +90,7 @@ export function useTeamProspects(enabled) {
     if (!enabled) { setLoading(false); return; }
     setLoading(true);
     const { data } = await supabase.from('prospects').select('*').order('created_at', { ascending: false });
-    setTeamProspects(data || []);
+    setTeamProspects((data || []).map(normalizeFetched));
     setLoading(false);
   }, [enabled]);
 
