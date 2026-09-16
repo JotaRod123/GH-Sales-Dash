@@ -1,406 +1,110 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { T } from '../lib/theme';
-
-const PROSP_LABELS = {
-  prospectados: 'Prospectados',
-  contatados: 'Contatados',
-  responderam: 'Responderam',
-  reuniaoAgendada: 'Reuniao agendada',
-  convertido: 'Convertido',
-};
 
 const STATUS_OPTS = ['Contatado', 'Respondeu', 'Reuniao agendada', 'Convertido', 'Perdido'];
 const PRODUTOS = ['Scale or Die','Monsterday','Scale Society','Blackmonster','MedMaster Plan','Health Club','Health Society','GH Master','MFA','Outros'];
-const ORIGENS = ['Trafego','Evento','Prospeccao','Indicacao'];
-
+const ORIGENS = ['Tráfego - Clint','Evento','Prospeccao','Indicacao'];
 const today = () => new Date().toISOString().slice(0, 10);
 const formatDateBR = (s) => { if (!s) return ''; const p = s.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; };
 
-const STATUS_COLORS = {
-  'Contatado': T.prosp.contatados,
-  'Respondeu': T.prosp.responderam,
-  'Reuniao agendada': T.prosp.reuniao,
-  'Convertido': T.success,
-  'Perdido': T.danger,
+const formatPhone = (value = '') => {
+  const d = String(value).replace(/\D/g, '').slice(0, 11);
+  if (!d) return '';
+  if (d.length <= 2) return `(${d}`;
+  if (d.length <= 7) return `(${d.slice(0,2)}) ${d.slice(2)}`;
+  return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
 };
-
-const normalizeProsp = (row) => ({
-  date: row.data,
-  prospectados: row.prospectados || 0,
-  contatados: row.contatados || 0,
-  responderam: row.responderam || 0,
-  reuniaoAgendada: row.reuniao_agendada || 0,
-  convertido: row.convertido || 0,
-});
+const formatInstagram = (value = '') => {
+  const clean = String(value).replace(/^@+/, '').replace(/[^a-zA-Z0-9._]/g, '').slice(0, 30);
+  return clean ? `@${clean}` : '';
+};
+const normalizeOrigin = (o) => ['Trafego','Tráfego'].includes(o) ? 'Tráfego - Clint' : o;
 
 function Card({ children, style = {} }) {
-  return <div style={Object.assign({ background: T.surface, border: '1px solid ' + T.border, borderRadius: 10, padding: '20px 24px' }, style)}>{children}</div>;
+  return <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:'20px 24px', ...style }}>{children}</div>;
 }
-function Label({ children, style = {} }) {
-  return <div style={Object.assign({ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: T.textSec }, style)}>{children}</div>;
+function Label({ children }) { return <div style={{fontSize:10,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:T.textSec}}>{children}</div>; }
+function Input({ label, value, onChange, placeholder='', type='text' }) {
+  return <div style={{display:'flex',flexDirection:'column',gap:5}}><Label>{label}</Label><input type={type} value={value || ''} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:6,color:T.text,fontSize:13,padding:'8px 11px',outline:'none',minHeight:36,boxSizing:'border-box'}} /></div>;
 }
-function Btn({ children, onClick, variant = 'primary', style = {}, small = false, disabled = false }) {
-  const [hov, setHov] = useState(false);
-  const variants = {
-    primary: { background: hov ? '#B8943B' : T.accent, color: '#0D1208' },
-    danger: { background: hov ? '#ff6b6b' : T.danger, color: '#fff' },
-    ghost: { background: 'transparent', color: hov ? T.text : T.textSec, border: '1px solid ' + (hov ? T.borderMid : T.border) },
-    success: { background: hov ? '#5aa84c' : T.success, color: '#fff' },
-  };
-  return (
-    <button onClick={disabled ? undefined : onClick} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={Object.assign({ border: 'none', borderRadius: 6, cursor: disabled ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: small ? 12 : 13, padding: small ? '5px 12px' : '8px 18px', opacity: disabled ? 0.5 : 1, transition: 'all .15s', fontFamily: 'inherit' }, variants[variant], style)}>
-      {children}
-    </button>
-  );
+function Select({ label, value, onChange, options }) {
+  return <div style={{display:'flex',flexDirection:'column',gap:5}}><Label>{label}</Label><select value={value} onChange={e=>onChange(e.target.value)} style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:6,color:T.text,fontSize:13,padding:'8px 11px',outline:'none',minHeight:36}}>{options.map(o=><option key={o} value={o}>{o}</option>)}</select></div>;
 }
-function Pill({ status }) {
-  const color = STATUS_COLORS[status] || T.textSec;
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: color + '18', border: '1px solid ' + color + '30', borderRadius: 20, padding: '2px 9px', fontSize: 11, fontWeight: 600, color, whiteSpace: 'nowrap' }}>
-      <span style={{ width: 5, height: 5, borderRadius: '50%', background: color, flexShrink: 0 }} />{status}
-    </span>
-  );
+function Textarea({ label, value, onChange, placeholder='' }) {
+  return <div style={{display:'flex',flexDirection:'column',gap:5}}><Label>{label}</Label><textarea rows={3} value={value || ''} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:6,color:T.text,fontSize:13,padding:'8px 11px',outline:'none',resize:'vertical',fontFamily:'inherit'}} /></div>;
 }
-function Input({ label, value, onChange, type = 'text', placeholder = '', error = '', style = {} }) {
-  const [focus, setFocus] = useState(false);
-  const isDate = type === 'date';
-  return (
-    <div style={Object.assign({ display: 'flex', flexDirection: 'column', gap: 5 }, style)}>
-      {label && <Label>{label}</Label>}
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
-        style={{ background: T.bg, border: '1px solid ' + (error ? T.danger : focus ? T.borderMid : T.border), borderRadius: 6, color: T.text, fontSize: 13, padding: isDate ? '8px 8px' : '8px 11px', outline: 'none', width: '100%', minHeight: 36, boxSizing: 'border-box', colorScheme: 'dark', WebkitAppearance: isDate ? 'none' : undefined }} />
-      {error && <span style={{ color: T.danger, fontSize: 11 }}>{error}</span>}
-    </div>
-  );
+function Btn({ children, onClick, variant='primary', disabled=false }) {
+  const style = variant==='danger' ? {background:T.danger,color:'#fff'} : variant==='ghost' ? {background:'transparent',color:T.textSec,border:`1px solid ${T.border}`} : variant==='success' ? {background:T.success,color:'#fff'} : {background:T.accent,color:'#08111B'};
+  return <button disabled={disabled} onClick={onClick} style={{...style,border:style.border||0,borderRadius:6,padding:'8px 14px',fontWeight:700,cursor:disabled?'not-allowed':'pointer',opacity:disabled?.55:1}}>{children}</button>;
 }
-function Select({ label, value, onChange, options, error = '', style = {} }) {
-  const [focus, setFocus] = useState(false);
-  return (
-    <div style={Object.assign({ display: 'flex', flexDirection: 'column', gap: 5 }, style)}>
-      {label && <Label>{label}</Label>}
-      <select value={value} onChange={(e) => onChange(e.target.value)} onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
-        style={{ background: T.bg, border: '1px solid ' + (error ? T.danger : focus ? T.borderMid : T.border), borderRadius: 6, color: value ? T.text : T.textSec, fontSize: 13, padding: '8px 11px', outline: 'none', width: '100%', boxSizing: 'border-box', cursor: 'pointer' }}>
-        {options.map((o) => <option key={o} value={o} style={{ background: T.surface }}>{o}</option>)}
-      </select>
-      {error && <span style={{ color: T.danger, fontSize: 11 }}>{error}</span>}
-    </div>
-  );
-}
-function Textarea({ label, value, onChange, placeholder = '', style = {} }) {
-  const [focus, setFocus] = useState(false);
-  return (
-    <div style={Object.assign({ display: 'flex', flexDirection: 'column', gap: 5 }, style)}>
-      {label && <Label>{label}</Label>}
-      <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        onFocus={() => setFocus(true)} onBlur={() => setFocus(false)} rows={3}
-        style={{ background: T.bg, border: '1px solid ' + (focus ? T.borderMid : T.border), borderRadius: 6, color: T.text, fontSize: 13, padding: '8px 11px', outline: 'none', width: '100%', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', colorScheme: 'dark' }} />
-    </div>
-  );
-}
-function Modal({ title, onClose, children, width = 520 }) {
-  return (
-    <div onClick={(e) => e.target === e.currentTarget && onClose()} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div style={{ background: T.surface, border: '1px solid ' + T.borderMid, borderRadius: 12, width: '100%', maxWidth: width, maxHeight: '90vh', overflow: 'auto', padding: 28, boxShadow: '0 24px 64px rgba(0,0,0,.8)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <span style={{ color: T.text, fontSize: 16, fontWeight: 700 }}>{title}</span>
-          <button onClick={onClose} style={{ background: 'transparent', border: '1px solid ' + T.border, color: T.textSec, fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '1px 8px', borderRadius: 6 }}>x</button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-function KpiProspCard({ kpiKey, value, onChange, readOnly }) {
-  const [editing, setEditing] = useState(false);
-  const [local, setLocal] = useState(String(value));
-  const color = T.prosp[kpiKey] || T.accent;
-  useState(() => setLocal(String(value)), [value]);
-  const commit = () => { setEditing(false); onChange(kpiKey, parseInt(local) || 0); };
-  return (
-    <div style={{ background: T.surface, border: '1px solid ' + T.border, borderTop: '2px solid ' + color, borderRadius: 10, padding: '18px 20px', flex: 1, minWidth: 130, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-        <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
-        <Label>{PROSP_LABELS[kpiKey]}</Label>
-      </div>
-      <div onClick={() => { if (!readOnly) { setEditing(true); } }}>
-        {editing && !readOnly ? (
-          <input type="number" min={0} value={local}
-            onChange={(e) => { setLocal(e.target.value); onChange(kpiKey, parseInt(e.target.value) || 0); }}
-            onBlur={commit} onKeyDown={(e) => e.key === 'Enter' && commit()}
-            style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid ' + color, color: T.text, fontSize: 30, fontWeight: 700, width: '100%', outline: 'none', padding: '0 0 2px', fontFamily: 'inherit' }} />
-        ) : (
-          <div style={{ fontSize: 30, fontWeight: 700, color: T.text, cursor: readOnly ? 'default' : 'text', lineHeight: 1.1 }}>{value}</div>
-        )}
-      </div>
-    </div>
-  );
+function Modal({ title, onClose, children, width=560 }) {
+  return <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.72)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:20}}><div style={{width:'100%',maxWidth:width,maxHeight:'90vh',overflow:'auto',background:T.surface,border:`1px solid ${T.borderMid}`,borderRadius:12,padding:26}}><div style={{display:'flex',justifyContent:'space-between',marginBottom:20}}><strong>{title}</strong><button onClick={onClose} style={{background:'transparent',border:0,color:T.textSec,fontSize:18,cursor:'pointer'}}>×</button></div>{children}</div></div>;
 }
 
-const EMPTY_PROSP = { nome: '', contato: '', status: 'Contatado', observacao: '' };
-const EMPTY_VENDA = { nome: '', telefone: '', dataVenda: today(), origem: 'Prospeccao', produto: 'Selecione', produtoOutros: '', valor: '', observacao: '' };
+const emptyProspect = { nome:'', whatsapp:'', instagram:'', status:'Contatado', observacao:'' };
+const emptyVenda = { nome:'', telefone:'', dataVenda:today(), origem:'Prospeccao', produto:'Selecione', produtoOutros:'', valor:'', observacao:'' };
 
-export default function TabProspeccao({ kpisProsp, prospects, readOnly, viewLabel, saveDay, addProspect, updateProspect, deleteProspect, addVenda, refetchVendas }) {
-  const normalizedKpis = kpisProsp.map(normalizeProsp);
+export default function TabProspeccao({ kpisProsp=[], prospects=[], readOnly, viewLabel, saveDay, addProspect, updateProspect, deleteProspect, addVenda, refetchVendas }) {
   const todayStr = today();
-  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [selectedDate,setSelectedDate] = useState(todayStr);
+  const day = useMemo(()=>kpisProsp.filter(k=>k.data===selectedDate).reduce((a,k)=>({prospectados:a.prospectados+(k.prospectados||0),contatados:a.contatados+(k.contatados||0),responderam:a.responderam+(k.responderam||0),reuniaoAgendada:a.reuniaoAgendada+(k.reuniao_agendada||0),convertido:a.convertido+(k.convertido||0)}),{prospectados:0,contatados:0,responderam:0,reuniaoAgendada:0,convertido:0}),[kpisProsp,selectedDate]);
+  const [current,setCurrent] = useState(day);
+  const [form,setForm] = useState(emptyProspect);
+  const [edit,setEdit] = useState(null);
+  const [del,setDel] = useState(null);
+  const [convert,setConvert] = useState(null);
+  const [venda,setVenda] = useState(emptyVenda);
+  const [saving,setSaving] = useState(false);
+  const [fStatus,setFStatus] = useState('');
 
-  const todayAgg = normalizedKpis.filter((k) => k.date === selectedDate).reduce(
-    (a, k) => ({ prospectados: a.prospectados + k.prospectados, contatados: a.contatados + k.contatados, responderam: a.responderam + k.responderam, reuniaoAgendada: a.reuniaoAgendada + k.reuniaoAgendada, convertido: a.convertido + k.convertido }),
-    { prospectados: 0, contatados: 0, responderam: 0, reuniaoAgendada: 0, convertido: 0 }
-  );
+  const display = readOnly ? day : current;
+  const setF = (k,v)=>setForm(p=>({...p,[k]:v}));
 
-  const [current, setCurrent] = useState(todayAgg);
-  useState(() => { setCurrent(todayAgg); }, [readOnly, viewLabel, selectedDate, JSON.stringify(todayAgg)]);
-  const displayValues = readOnly ? todayAgg : current;
-
-  const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState(false);
-  const [form, setForm] = useState(Object.assign({}, EMPTY_PROSP));
-  const [editProsp, setEditProsp] = useState(null);
-  const [confirmDel, setConfirmDel] = useState(null);
-  const [convertProsp, setConvertProsp] = useState(null);
-  const [vendaForm, setVendaForm] = useState(Object.assign({}, EMPTY_VENDA));
-  const [fStatus, setFStatus] = useState('');
-  const [fFrom, setFFrom] = useState('');
-  const [fTo, setFTo] = useState('');
-  const [savingVenda, setSavingVenda] = useState(false);
-
-  const handleChange = (k, v) => setCurrent((p) => Object.assign({}, p, { [k]: v }));
-  const handleSave = async () => {
+  const handleAdd = async()=>{
+    if(!form.nome.trim() || (!form.whatsapp && !form.instagram)) return;
+    await addProspect({...form, contato: form.whatsapp || form.instagram, whatsapp:form.whatsapp||null, instagram:form.instagram||null});
+    setForm(emptyProspect);
+  };
+  const handleEdit = async()=>{
+    if(!edit?.nome?.trim() || (!edit.whatsapp && !edit.instagram && !edit.contato)) return;
+    const whatsapp = edit.whatsapp ? formatPhone(edit.whatsapp) : '';
+    const instagram = edit.instagram ? formatInstagram(edit.instagram) : '';
+    await updateProspect(edit.id,{...edit, contato:whatsapp||instagram||edit.contato||'', whatsapp:whatsapp||null, instagram:instagram||null});
+    setEdit(null);
+  };
+  const handleConvert = async()=>{
+    const produto = venda.produto==='Outros'?venda.produtoOutros:venda.produto;
+    if(!produto || produto==='Selecione' || !venda.valor) return;
     setSaving(true);
-    await saveDay(current, selectedDate);
+    const {error}=await addVenda({...venda, origem:normalizeOrigin(venda.origem), produto, prospectId:convert.id});
+    if(!error){ await updateProspect(convert.id,{...convert,status:'Convertido'}); if(refetchVendas) await refetchVendas(); setConvert(null); setVenda(emptyVenda); }
     setSaving(false);
-    setToast(true);
-    setTimeout(() => setToast(false), 2500);
   };
 
-  const handleAddProsp = async () => {
-    if (!form.nome.trim() || !form.contato.trim()) return;
-    await addProspect(form);
-    setForm(Object.assign({}, EMPTY_PROSP));
-  };
+  const monthPrefix = todayStr.slice(0,7);
+  const monthAgg = kpisProsp.filter(k=>String(k.data||'').startsWith(monthPrefix)).reduce((a,k)=>({prospectados:a.prospectados+(k.prospectados||0),contatados:a.contatados+(k.contatados||0),responderam:a.responderam+(k.responderam||0),reuniaoAgendada:a.reuniaoAgendada+(k.reuniao_agendada||0),convertido:a.convertido+(k.convertido||0)}),{prospectados:0,contatados:0,responderam:0,reuniaoAgendada:0,convertido:0});
+  const funil=[['Prospectados',monthAgg.prospectados],['Contatados',monthAgg.contatados],['Responderam',monthAgg.responderam],['Reunião agendada',monthAgg.reuniaoAgendada],['Convertidos',monthAgg.convertido]];
+  const max=Math.max(monthAgg.prospectados,1);
+  const filtered=prospects.filter(p=>!fStatus||p.status===fStatus);
 
-  const handleEditSave = async () => {
-    if (!editProsp.nome.trim() || !editProsp.contato.trim()) return;
-    await updateProspect(editProsp.id, editProsp);
-    setEditProsp(null);
-  };
+  return <div style={{display:'flex',flexDirection:'column',gap:30}}>
+    {readOnly&&<div style={{color:T.accent,fontSize:12,fontWeight:700}}>Visualizando: {viewLabel} · somente leitura</div>}
 
-  const handleConvert = async () => {
-    const produto = vendaForm.produto === 'Outros' ? vendaForm.produtoOutros : vendaForm.produto;
-    if (!produto || produto === 'Selecione' || !vendaForm.valor || isNaN(parseFloat(vendaForm.valor))) return;
-    const dataVenda = vendaForm.dataVenda
-      ? new Date(vendaForm.dataVenda).toISOString().slice(0, 10)
-      : new Date().toISOString().slice(0, 10);
-    setSavingVenda(true);
-    const { error } = await addVenda({ ...vendaForm, produto, dataVenda, prospectId: convertProsp.id });
-    if (!error) {
-      await updateProspect(convertProsp.id, { ...convertProsp, status: 'Convertido' });
-      if (refetchVendas) await refetchVendas();
-      setConvertProsp(null);
-      setVendaForm(Object.assign({}, EMPTY_VENDA));
-    }
-    setSavingVenda(false);
-  };
-
-  const now = new Date();
-  const mStart = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
-  const mKpis = normalizedKpis.filter((k) => k.date >= mStart && k.date <= todayStr);
-  const mAgg = mKpis.reduce(
-    (a, k) => ({ prospectados: a.prospectados + k.prospectados, contatados: a.contatados + k.contatados, responderam: a.responderam + k.responderam, reuniaoAgendada: a.reuniaoAgendada + k.reuniaoAgendada, convertido: a.convertido + k.convertido }),
-    { prospectados: 0, contatados: 0, responderam: 0, reuniaoAgendada: 0, convertido: 0 }
-  );
-
-  const funil = [
-    { label: 'Prospectados', val: mAgg.prospectados, color: T.prosp.prospectados },
-    { label: 'Contatados', val: mAgg.contatados, color: T.prosp.contatados },
-    { label: 'Responderam', val: mAgg.responderam, color: T.prosp.responderam },
-    { label: 'Reuniao agendada', val: mAgg.reuniaoAgendada, color: T.prosp.reuniao },
-    { label: 'Convertido', val: mAgg.convertido, color: T.prosp.convertido },
-  ];
-  const maxFunil = mAgg.prospectados || 1;
-
-  const filtered = prospects.filter((p) => {
-    if (fStatus && p.status !== fStatus) return false;
-    const d = p.created_at ? p.created_at.slice(0, 10) : '';
-    if (fFrom && d < fFrom) return false;
-    if (fTo && d > fTo) return false;
-    return true;
-  });
-
-  const isToday = selectedDate === todayStr;
-  const sf = (f, v) => setForm((p) => Object.assign({}, p, { [f]: v }));
-  const svf = (f, v) => setVendaForm((p) => Object.assign({}, p, { [f]: v }));
-
-  const TH = ({ children }) => (
-    <th style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: T.textMuted, borderBottom: '1px solid ' + T.border, whiteSpace: 'nowrap' }}>{children}</th>
-  );
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
-      {readOnly && <div style={{ color: T.accent, fontSize: 12, fontWeight: 600 }}>Visualizando: {viewLabel} · somente leitura</div>}
-
-      <div>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-          <span style={{ color: T.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>KPIs de prospeccao · {formatDateBR(selectedDate)}</span>
-          {!readOnly && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Label>Data:</Label>
-              <input type="date" value={selectedDate} max={todayStr} onChange={(e) => setSelectedDate(e.target.value)}
-                style={{ background: T.bg, border: '1px solid ' + T.border, borderRadius: 6, color: T.text, fontSize: 13, padding: '5px 8px', outline: 'none', minHeight: 34, colorScheme: 'dark', WebkitAppearance: 'none' }} />
-              {!isToday && <button onClick={() => setSelectedDate(todayStr)} style={{ background: 'transparent', border: '1px solid ' + T.border, borderRadius: 6, color: T.textSec, fontSize: 12, padding: '5px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>Hoje</button>}
-            </div>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          {Object.keys(PROSP_LABELS).map((k) => <KpiProspCard key={k} kpiKey={k} value={displayValues[k]} onChange={handleChange} readOnly={readOnly} />)}
-        </div>
-        {!readOnly && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
-            <Btn onClick={handleSave} disabled={saving}>{saving ? 'Salvando...' : isToday ? 'Salvar dia' : 'Salvar ' + formatDateBR(selectedDate)}</Btn>
-            {toast && <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: T.success, fontSize: 12, fontWeight: 600 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: T.success }} />KPIs salvos</div>}
-          </div>
-        )}
-      </div>
-
-      <div>
-        <div style={{ marginBottom: 14 }}><span style={{ color: T.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>Funil de prospeccao · mês atual</span></div>
-        <Card>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {funil.map((f) => {
-              const pct = maxFunil > 0 ? (f.val / maxFunil) * 100 : 0;
-              return (
-                <div key={f.label} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 12, color: T.textSec, width: 150, flexShrink: 0 }}>{f.label}</span>
-                  <div style={{ flex: 1, height: 28, background: T.bg, borderRadius: 6, overflow: 'hidden', position: 'relative' }}>
-                    <div style={{ width: Math.max(pct, 0) + '%', height: '100%', background: f.color, borderRadius: 6, display: 'flex', alignItems: 'center', padding: '0 10px', transition: 'width .4s ease' }}>
-                      {f.val > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: '#0D1208' }}>{f.val}</span>}
-                    </div>
-                  </div>
-                  <span style={{ fontSize: 11, color: T.textMuted, width: 40, textAlign: 'right', flexShrink: 0 }}>{pct.toFixed(0)}%</span>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      </div>
-
-      {!readOnly && (
-        <div>
-          <div style={{ marginBottom: 14 }}><span style={{ color: T.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>Novo prospect</span></div>
-          <Card>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(195px, 1fr))', gap: 14, marginBottom: 14 }}>
-              <Input label="Nome" value={form.nome} onChange={(v) => sf('nome', v)} placeholder="Nome do prospect" />
-              <Input label="Contato (tel/insta)" value={form.contato} onChange={(v) => sf('contato', v)} placeholder="@usuario ou (11) 99999" />
-              <Select label="Status" value={form.status} onChange={(v) => sf('status', v)} options={STATUS_OPTS} />
-            </div>
-            <div style={{ marginBottom: 18 }}>
-              <Textarea label="Observacoes" value={form.observacao} onChange={(v) => sf('observacao', v)} placeholder="Contexto do prospect..." />
-            </div>
-            <Btn onClick={handleAddProsp}>Adicionar prospect</Btn>
-          </Card>
-        </div>
-      )}
-
-      <div>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-          <span style={{ color: T.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>{filtered.length} prospect{filtered.length !== 1 ? 's' : ''}</span>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <Label>Status</Label>
-              <select value={fStatus} onChange={(e) => setFStatus(e.target.value)} style={{ background: T.bg, border: '1px solid ' + T.border, borderRadius: 6, color: T.text, fontSize: 12, padding: '5px 10px', outline: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                <option value="">Todos</option>
-                {STATUS_OPTS.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 11, color: T.textSec }}>De</span>
-              <input type="date" value={fFrom} onChange={(e) => setFFrom(e.target.value)} style={{ background: T.bg, border: '1px solid ' + T.border, borderRadius: 6, color: T.text, fontSize: 12, padding: '5px 8px', outline: 'none', colorScheme: 'dark', minHeight: 32 }} />
-              <span style={{ fontSize: 11, color: T.textSec }}>ate</span>
-              <input type="date" value={fTo} onChange={(e) => setFTo(e.target.value)} style={{ background: T.bg, border: '1px solid ' + T.border, borderRadius: 6, color: T.text, fontSize: 12, padding: '5px 8px', outline: 'none', colorScheme: 'dark', minHeight: 32 }} />
-            </div>
-            <button onClick={() => { setFStatus(''); setFFrom(''); setFTo(''); }} style={{ background: 'transparent', border: '1px solid ' + T.border, borderRadius: 6, color: T.textSec, fontSize: 12, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit' }}>Limpar</button>
-          </div>
-        </div>
-        <Card style={{ padding: 0, overflow: 'hidden' }}>
-          {filtered.length === 0 ? (
-            <div style={{ padding: '48px 24px', textAlign: 'center', color: T.textMuted, fontSize: 13 }}>Nenhum prospect encontrado.</div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead><tr><TH>Nome</TH><TH>Contato</TH><TH>Status</TH><TH>Observacoes</TH>{!readOnly && <TH></TH>}</tr></thead>
-                <tbody>
-                  {filtered.map((p, i) => (
-                    <tr key={p.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid ' + T.border : 'none' }}>
-                      <td style={{ padding: '11px 14px', color: T.text, fontWeight: 500 }}>{p.nome}</td>
-                      <td style={{ padding: '11px 14px', color: T.textSec }}>{p.contato}</td>
-                      <td style={{ padding: '11px 14px' }}><Pill status={p.status} /></td>
-                      <td style={{ padding: '11px 14px', color: T.textSec, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.observacao || <span style={{ color: T.textMuted, fontStyle: 'italic' }}>-</span>}</td>
-                      {!readOnly && (
-                        <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <Btn small variant="ghost" onClick={() => setEditProsp(Object.assign({}, p))}>Editar</Btn>
-                            {p.status !== 'Convertido' && <Btn small variant="success" onClick={() => { setConvertProsp(p); setVendaForm(Object.assign({}, EMPTY_VENDA, { nome: p.nome })); }}>Converter</Btn>}
-                            <Btn small variant="danger" onClick={() => setConfirmDel(p)}>Excluir</Btn>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {editProsp && (
-        <Modal title="Editar prospect" onClose={() => setEditProsp(null)}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-            <Input label="Nome" value={editProsp.nome} onChange={(v) => setEditProsp((p) => Object.assign({}, p, { nome: v }))} />
-            <Input label="Contato" value={editProsp.contato} onChange={(v) => setEditProsp((p) => Object.assign({}, p, { contato: v }))} />
-            <Select label="Status" value={editProsp.status} onChange={(v) => setEditProsp((p) => Object.assign({}, p, { status: v }))} options={STATUS_OPTS} />
-          </div>
-          <Textarea label="Observacoes" value={editProsp.observacao} onChange={(v) => setEditProsp((p) => Object.assign({}, p, { observacao: v }))} />
-          <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
-            <Btn variant="ghost" onClick={() => setEditProsp(null)}>Cancelar</Btn>
-            <Btn onClick={handleEditSave}>Salvar</Btn>
-          </div>
-        </Modal>
-      )}
-
-      {convertProsp && (
-        <Modal title={'Converter em venda - ' + convertProsp.nome} onClose={() => setConvertProsp(null)}>
-          <p style={{ color: T.textSec, fontSize: 13, marginBottom: 20 }}>Preencha os dados da venda para registrar no CRM automaticamente.</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-            <Input label="Telefone (opcional)" value={vendaForm.telefone} onChange={(v) => svf('telefone', v)} placeholder="(11) 99999-9999" />
-            <Input label="Data da venda" type="date" value={vendaForm.dataVenda} onChange={(v) => svf('dataVenda', v)} />
-            <Select label="Origem" value={vendaForm.origem} onChange={(v) => svf('origem', v)} options={ORIGENS} />
-            <Select label="Produto" value={vendaForm.produto} onChange={(v) => svf('produto', v)} options={['Selecione', ...PRODUTOS]} />
-            {vendaForm.produto === 'Outros' && <Input label="Qual produto?" value={vendaForm.produtoOutros} onChange={(v) => svf('produtoOutros', v)} placeholder="Nome do produto" />}
-            <Input label="Valor (R$)" type="number" value={vendaForm.valor} onChange={(v) => svf('valor', v)} placeholder="0.00" />
-          </div>
-          <Textarea label="Observacoes" value={vendaForm.observacao} onChange={(v) => svf('observacao', v)} placeholder="Detalhes da venda..." />
-          <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
-            <Btn variant="ghost" onClick={() => setConvertProsp(null)}>Cancelar</Btn>
-            <Btn variant="success" onClick={handleConvert} disabled={savingVenda}>{savingVenda ? 'Registrando...' : 'Registrar no CRM'}</Btn>
-          </div>
-        </Modal>
-      )}
-
-      {confirmDel && (
-        <Modal title="Excluir prospect" onClose={() => setConfirmDel(null)} width={400}>
-          <p style={{ color: T.textSec, margin: '0 0 22px', fontSize: 14, lineHeight: 1.6 }}>
-            Excluir <strong style={{ color: T.text }}>{confirmDel.nome}</strong>? Esta acao e irreversivel.
-          </p>
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <Btn variant="ghost" onClick={() => setConfirmDel(null)}>Cancelar</Btn>
-            <Btn variant="danger" onClick={async () => { await deleteProspect(confirmDel.id); setConfirmDel(null); }}>Excluir</Btn>
-          </div>
-        </Modal>
-      )}
+    <div><div style={{display:'flex',justifyContent:'space-between',alignItems:'end',marginBottom:12}}><Label>KPIs de prospecção · {formatDateBR(selectedDate)}</Label>{!readOnly&&<input type="date" value={selectedDate} max={todayStr} onChange={e=>{setSelectedDate(e.target.value);setCurrent(day)}} style={{background:T.bg,border:`1px solid ${T.border}`,color:T.text,borderRadius:6,padding:'6px 8px'}}/>}</div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(5,minmax(130px,1fr))',gap:10}}>{[['prospectados','Prospectados'],['contatados','Contatados'],['responderam','Responderam'],['reuniaoAgendada','Reunião agendada'],['convertido','Convertidos']].map(([k,l])=><Card key={k} style={{padding:16}}><Label>{l}</Label>{readOnly?<div style={{fontSize:28,fontWeight:800,marginTop:8}}>{display[k]||0}</div>:<input type="number" min="0" value={display[k]||0} onChange={e=>setCurrent(p=>({...p,[k]:Number(e.target.value)||0}))} style={{width:'100%',background:'transparent',border:0,borderBottom:`1px solid ${T.borderMid}`,color:T.text,fontSize:28,fontWeight:800,marginTop:8,outline:'none'}}/>}</Card>)}</div>
+      {!readOnly&&<div style={{marginTop:12}}><Btn onClick={()=>saveDay(current,selectedDate)}>Salvar KPIs</Btn></div>}
     </div>
-  );
+
+    <div><Label>Funil de prospecção · mês atual</Label><Card style={{marginTop:12}}>{funil.map(([l,v])=><div key={l} style={{display:'flex',alignItems:'center',gap:12,margin:'9px 0'}}><div style={{width:150,color:T.textSec,fontSize:12}}>{l}</div><div style={{flex:1,height:26,background:T.bg,borderRadius:6,overflow:'hidden'}}><div style={{height:'100%',width:`${Math.max((v/max)*100,1)}%`,background:T.accent,borderRadius:6}}/></div><strong style={{width:40,textAlign:'right'}}>{v}</strong></div>)}</Card></div>
+
+    {!readOnly&&<div><Label>Novo prospect</Label><Card style={{marginTop:12}}><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:12,marginBottom:14}}><Input label="Nome" value={form.nome} onChange={v=>setF('nome',v)} placeholder="Nome do prospect"/><Input label="Telefone" value={form.whatsapp} onChange={v=>setF('whatsapp',formatPhone(v))} placeholder="(11) 99999-9999"/><Input label="Instagram" value={form.instagram} onChange={v=>setF('instagram',formatInstagram(v))} placeholder="@usuario"/><Select label="Status" value={form.status} onChange={v=>setF('status',v)} options={STATUS_OPTS}/></div><Textarea label="Observações" value={form.observacao} onChange={v=>setF('observacao',v)} placeholder="Contexto do prospect..."/><div style={{marginTop:16}}><Btn onClick={handleAdd}>Adicionar prospect</Btn></div></Card></div>}
+
+    <div><div style={{display:'flex',justifyContent:'space-between',alignItems:'end',marginBottom:12}}><Label>{filtered.length} prospects</Label><select value={fStatus} onChange={e=>setFStatus(e.target.value)} style={{background:T.bg,border:`1px solid ${T.border}`,color:T.text,borderRadius:6,padding:'6px 8px'}}><option value="">Todos os status</option>{STATUS_OPTS.map(s=><option key={s}>{s}</option>)}</select></div><Card style={{padding:0,overflow:'hidden'}}><div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',minWidth:850}}><thead><tr>{['Nome','Telefone','Instagram','Status','Observações',''].map(h=><th key={h} style={{textAlign:'left',padding:'10px 12px',color:T.textMuted,fontSize:10,textTransform:'uppercase',borderBottom:`1px solid ${T.border}`}}>{h}</th>)}</tr></thead><tbody>{filtered.map(p=><tr key={p.id} style={{borderBottom:`1px solid ${T.border}`}}><td style={{padding:12,fontWeight:700}}>{p.nome}</td><td style={{padding:12,color:T.textSec}}>{formatPhone(p.whatsapp || (String(p.contato||'').match(/\d/) ? p.contato : '')) || '-'}</td><td style={{padding:12,color:T.textSec}}>{p.instagram || (!String(p.contato||'').match(/\d/) ? p.contato : '') || '-'}</td><td style={{padding:12}}>{p.status}</td><td style={{padding:12,color:T.textSec,maxWidth:260}}>{p.observacao||'-'}</td><td style={{padding:12}}>{!readOnly&&<div style={{display:'flex',gap:6}}><Btn variant="ghost" onClick={()=>setEdit({...p,whatsapp:formatPhone(p.whatsapp || (String(p.contato||'').match(/\d/)?p.contato:'')),instagram:p.instagram || (!String(p.contato||'').match(/\d/)?p.contato:'')})}>Editar</Btn>{p.status!=='Convertido'&&<Btn variant="success" onClick={()=>{setConvert(p);setVenda({...emptyVenda,nome:p.nome,telefone:formatPhone(p.whatsapp || (String(p.contato||'').match(/\d/)?p.contato:''))})}}>Converter</Btn>}<Btn variant="danger" onClick={()=>setDel(p)}>Excluir</Btn></div>}</td></tr>)}</tbody></table></div></Card></div>
+
+    {edit&&<Modal title="Editar prospect" onClose={()=>setEdit(null)}><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}><Input label="Nome" value={edit.nome} onChange={v=>setEdit(p=>({...p,nome:v}))}/><Input label="Telefone" value={edit.whatsapp||''} onChange={v=>setEdit(p=>({...p,whatsapp:formatPhone(v)}))} placeholder="(11) 99999-9999"/><Input label="Instagram" value={edit.instagram||''} onChange={v=>setEdit(p=>({...p,instagram:formatInstagram(v)}))} placeholder="@usuario"/><Select label="Status" value={edit.status} onChange={v=>setEdit(p=>({...p,status:v}))} options={STATUS_OPTS}/></div><Textarea label="Observações" value={edit.observacao||''} onChange={v=>setEdit(p=>({...p,observacao:v}))}/><div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:18}}><Btn variant="ghost" onClick={()=>setEdit(null)}>Cancelar</Btn><Btn onClick={handleEdit}>Salvar</Btn></div></Modal>}
+
+    {convert&&<Modal title={`Converter em venda - ${convert.nome}`} onClose={()=>setConvert(null)}><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}><Input label="Telefone" value={venda.telefone} onChange={v=>setVenda(p=>({...p,telefone:formatPhone(v)}))} placeholder="(11) 99999-9999"/><Input label="Data da venda" type="date" value={venda.dataVenda} onChange={v=>setVenda(p=>({...p,dataVenda:v}))}/><Select label="Origem" value={venda.origem} onChange={v=>setVenda(p=>({...p,origem:v}))} options={ORIGENS}/><Select label="Produto" value={venda.produto} onChange={v=>setVenda(p=>({...p,produto:v}))} options={['Selecione',...PRODUTOS]}/>{venda.produto==='Outros'&&<Input label="Qual produto?" value={venda.produtoOutros} onChange={v=>setVenda(p=>({...p,produtoOutros:v}))}/>}<Input label="Valor (R$)" type="number" value={venda.valor} onChange={v=>setVenda(p=>({...p,valor:v}))}/></div><Textarea label="Observações" value={venda.observacao} onChange={v=>setVenda(p=>({...p,observacao:v}))}/><div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:18}}><Btn variant="ghost" onClick={()=>setConvert(null)}>Cancelar</Btn><Btn variant="success" disabled={saving} onClick={handleConvert}>{saving?'Registrando...':'Registrar venda'}</Btn></div></Modal>}
+
+    {del&&<Modal title="Excluir prospect" width={400} onClose={()=>setDel(null)}><p style={{color:T.textSec}}>Excluir <strong style={{color:T.text}}>{del.nome}</strong>?</p><div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:18}}><Btn variant="ghost" onClick={()=>setDel(null)}>Cancelar</Btn><Btn variant="danger" onClick={async()=>{await deleteProspect(del.id);setDel(null)}}>Excluir</Btn></div></Modal>}
+  </div>;
 }
