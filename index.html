@@ -8,5 +8,52 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (() => {
+        const formatPhone = (value) => {
+          const digits = String(value || '').replace(/\D/g, '').slice(0, 11);
+          if (!digits) return '';
+          if (digits.length <= 2) return `(${digits}`;
+          if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+          return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+        };
+
+        const isPhoneInput = (input) => {
+          if (!(input instanceof HTMLInputElement)) return false;
+          const placeholder = (input.placeholder || '').toLowerCase();
+          const parentText = (input.parentElement?.textContent || '').toLowerCase();
+          return placeholder.includes('99999') || parentText.includes('telefone') || parentText.includes('contato (tel/insta)');
+        };
+
+        document.addEventListener('input', (event) => {
+          const input = event.target;
+          if (!isPhoneInput(input)) return;
+          const masked = formatPhone(input.value);
+          if (input.value !== masked) input.value = masked;
+        }, true);
+
+        const normalizePhoneFields = () => {
+          document.querySelectorAll('input').forEach((input) => {
+            if (!isPhoneInput(input)) return;
+            input.inputMode = 'numeric';
+            input.maxLength = 15;
+            input.placeholder = '(11) 99999-9999';
+            if (input.value) input.value = formatPhone(input.value);
+
+            const parent = input.parentElement;
+            if (parent) {
+              parent.querySelectorAll('div').forEach((label) => {
+                const text = (label.textContent || '').trim().toLowerCase();
+                if (text === 'contato (tel/insta)' || text === 'contato') label.textContent = 'Telefone';
+              });
+            }
+          });
+        };
+
+        const observer = new MutationObserver(normalizePhoneFields);
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+        document.addEventListener('DOMContentLoaded', normalizePhoneFields);
+      })();
+    </script>
   </body>
 </html>
