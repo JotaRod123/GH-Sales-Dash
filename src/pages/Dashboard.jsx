@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useKpis, useTeamKpis } from '../hooks/useKpis';
 import { useKpisProspeccao, useTeamKpisProspeccao } from '../hooks/useKpisProspeccao';
 import { useProspects, useTeamProspects } from '../hooks/useProspects';
@@ -11,7 +11,7 @@ import TabCalls from '../components/TabCalls';
 import TabAcoes from '../components/TabAcoes';
 import TabCRM from '../components/TabCRM';
 import TabMetas from '../components/TabMetas';
-import TabRelatorios from '../components/TabRelatorios';
+import TabRelatorios from '../components/TabRelatoriosComTexto';
 import { T } from '../lib/theme';
 
 const NAV = [
@@ -40,6 +40,19 @@ export default function Dashboard({ profile, isAdmin, isEspectador, onSignOut })
   const teamKpisProspHook = useTeamKpisProspeccao(canSeeTeam);
   const teamProspectsHook = useTeamProspects(canSeeTeam);
   const teamVendasHook = useTeamVendas(canSeeTeam);
+
+  useEffect(() => {
+    const normalizeUiLabels = () => {
+      document.querySelectorAll('option').forEach((option) => {
+        const value = (option.textContent || '').trim();
+        if (value === 'Tráfego' || value === 'Trafego') option.textContent = 'Tráfego - Clint';
+      });
+    };
+    normalizeUiLabels();
+    const observer = new MutationObserver(normalizeUiLabels);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
 
   const getDisplay = () => {
     if (viewMode === 'mine') {
