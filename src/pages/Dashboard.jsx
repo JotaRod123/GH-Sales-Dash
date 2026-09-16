@@ -3,9 +3,14 @@ import { useKpis, useTeamKpis } from '../hooks/useKpis';
 import { useKpisProspeccao, useTeamKpisProspeccao } from '../hooks/useKpisProspeccao';
 import { useProspects, useTeamProspects } from '../hooks/useProspects';
 import { useVendas, useTeamVendas } from '../hooks/useVendas';
+import { useSalesOS } from '../hooks/useSalesOS';
 import TabVisaoGeral from '../components/TabVisaoGeral';
 import TabProspeccao from '../components/TabProspeccao';
+import TabPipeline from '../components/TabPipeline';
+import TabCalls from '../components/TabCalls';
+import TabAcoes from '../components/TabAcoes';
 import TabCRM from '../components/TabCRM';
+import TabMetas from '../components/TabMetas';
 import TabRelatorios from '../components/TabRelatorios';
 import { T } from '../lib/theme';
 
@@ -24,6 +29,7 @@ export default function Dashboard({ profile, isAdmin, isEspectador, onSignOut })
   const ownKpisProsp = useKpisProspeccao(profile.id);
   const ownProspects = useProspects(profile.id);
   const ownVendas = useVendas(profile.id);
+  const salesOS = useSalesOS(profile.id);
 
   const canSeeTeam = isAdmin || isEspectador;
   const teamKpisHook = useTeamKpis(canSeeTeam);
@@ -34,30 +40,20 @@ export default function Dashboard({ profile, isAdmin, isEspectador, onSignOut })
   const NAV = [
     { key: 'visao', label: 'Visão Geral' },
     { key: 'prospeccao', label: 'Prospecção' },
-    { key: 'crm', label: 'CRM' },
+    { key: 'pipeline', label: 'Pipeline' },
+    { key: 'calls', label: 'Calls' },
+    { key: 'acoes', label: 'Próximas Ações' },
+    { key: 'crm', label: 'Vendas' },
+    { key: 'metas', label: 'Metas' },
     { key: 'relatorios', label: 'Relatórios' },
   ];
 
   const getDisplay = () => {
     if (viewMode === 'mine') {
-      return {
-        kpis: ownKpis.kpis,
-        kpisProsp: ownKpisProsp.kpis,
-        prospects: ownProspects.prospects,
-        vendas: ownVendas.vendas,
-        readOnly: false,
-        label: profile.nome,
-      };
+      return { kpis: ownKpis.kpis, kpisProsp: ownKpisProsp.kpis, prospects: ownProspects.prospects, vendas: ownVendas.vendas, readOnly: false, label: profile.nome };
     }
     if (viewMode === 'team') {
-      return {
-        kpis: teamKpisHook.teamKpis,
-        kpisProsp: teamKpisProspHook.teamKpis,
-        prospects: teamProspectsHook.teamProspects,
-        vendas: teamVendasHook.teamVendas,
-        readOnly: true,
-        label: 'Consolidado da equipe',
-      };
+      return { kpis: teamKpisHook.teamKpis, kpisProsp: teamKpisProspHook.teamKpis, prospects: teamProspectsHook.teamProspects, vendas: teamVendasHook.teamVendas, readOnly: true, label: 'Consolidado da equipe' };
     }
     const admin = teamKpisHook.admins.find((a) => a.id === viewMode);
     return {
@@ -71,130 +67,45 @@ export default function Dashboard({ profile, isAdmin, isEspectador, onSignOut })
   };
 
   const display = getDisplay();
+  const ownModule = viewMode === 'mine';
+  const teamNotice = <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:24, color:T.textSec }}>Calls, próximas ações e metas são operacionais por usuário. Selecione <b style={{color:T.text}}>Meus dados</b> para editar e visualizar esses módulos.</div>;
 
   return (
-    <div style={{
-      minHeight: '100vh', background: T.bg, color: T.text,
-      fontFamily: "'Inter', 'SF Pro Display', -apple-system, system-ui, sans-serif",
-      WebkitFontSmoothing: 'antialiased',
-    }}>
-      <header style={{
-        height: 52, borderBottom: '1px solid ' + T.border, background: T.surface,
-        display: 'flex', alignItems: 'center', padding: '0 28px', gap: 24,
-        position: 'sticky', top: 0, zIndex: 200, flexWrap: 'wrap',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          <div style={{
-            width: 28, height: 28, borderRadius: 6,
-            background: 'linear-gradient(135deg, #C8A84B 0%, #8A6F2A 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 11, fontWeight: 800, color: '#0D1208',
-          }}>GH</div>
-          <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Sales</span>
-        </div>
+    <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: "'Inter', 'SF Pro Display', -apple-system, system-ui, sans-serif", WebkitFontSmoothing: 'antialiased' }}>
+      <header style={{ borderBottom: '1px solid ' + T.border, background: T.surface, padding: '10px 22px', position: 'sticky', top: 0, zIndex: 200 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:18, flexWrap:'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 7, background: 'linear-gradient(135deg, #D6A72C 0%, #8A6A18 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#08131F' }}>GH</div>
+            <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Sales OS</span>
+          </div>
 
-        <nav style={{ display: 'flex', gap: 2 }}>
-          {NAV.map((n) => {
-            const active = tab === n.key;
-            return (
-              <button key={n.key} onClick={() => setTab(n.key)} style={{
-                background: 'transparent', border: 'none', borderRadius: 5,
-                color: active ? T.text : T.textSec, cursor: 'pointer',
-                fontSize: 13, fontWeight: active ? 600 : 400,
-                padding: '5px 11px', position: 'relative', fontFamily: 'inherit',
-              }}>
-                {n.label}
-                {active && (
-                  <span style={{
-                    position: 'absolute', bottom: -1, left: '50%',
-                    transform: 'translateX(-50%)', width: '60%',
-                    height: 2, background: T.accent, borderRadius: 1,
-                  }} />
-                )}
-              </button>
-            );
-          })}
-        </nav>
+          <nav style={{ display:'flex', gap:2, flexWrap:'wrap', flex:1 }}>
+            {NAV.map((n) => {
+              const active = tab === n.key;
+              return <button key={n.key} onClick={() => setTab(n.key)} style={{ background: active ? T.surfaceHov : 'transparent', border:'none', borderRadius:6, color:active ? T.text : T.textSec, cursor:'pointer', fontSize:12, fontWeight:active?700:400, padding:'7px 10px', fontFamily:'inherit' }}>{n.label}</button>;
+            })}
+          </nav>
 
-        {canSeeTeam && (
-          <select
-            value={viewMode}
-            onChange={(e) => setViewMode(e.target.value)}
-            style={{
-              background: T.bg, border: '1px solid ' + T.border, borderRadius: 6,
-              color: T.text, fontSize: 12, padding: '5px 10px',
-              outline: 'none', cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
+          {canSeeTeam && <select value={viewMode} onChange={(e) => setViewMode(e.target.value)} style={{ background:T.bg, border:'1px solid '+T.border, borderRadius:6, color:T.text, fontSize:12, padding:'6px 9px' }}>
             {isAdmin && <option value="mine">Meus dados</option>}
             <option value="team">Consolidado da equipe</option>
-            {teamKpisHook.admins
-              .filter((a) => a.id !== profile.id)
-              .map((a) => (
-                <option key={a.id} value={a.id}>{a.nome}</option>
-              ))}
-          </select>
-        )}
+            {teamKpisHook.admins.filter((a)=>a.id!==profile.id).map((a)=><option key={a.id} value={a.id}>{a.nome}</option>)}
+          </select>}
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <span style={{ color: T.textMuted, fontSize: 11 }}>{formatDateBR(today())}</span>
-          <span style={{ color: T.textSec, fontSize: 12 }}>{profile.nome}</span>
-          <button onClick={onSignOut} style={{
-            background: 'transparent', border: '1px solid ' + T.border,
-            borderRadius: 6, color: T.textSec, fontSize: 12,
-            padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit',
-          }}>Sair</button>
+          <span style={{ color:T.textMuted, fontSize:11 }}>{formatDateBR(today())}</span>
+          <button onClick={onSignOut} style={{ background:'transparent', border:'1px solid '+T.border, borderRadius:6, color:T.textSec, fontSize:12, padding:'6px 10px', cursor:'pointer' }}>Sair</button>
         </div>
       </header>
 
-      <main style={{ maxWidth: 1380, margin: '0 auto', padding: '36px 28px' }}>
-        {tab === 'visao' && (
-          <TabVisaoGeral
-            kpis={display.kpis}
-            vendas={display.vendas}
-            readOnly={display.readOnly}
-            viewLabel={display.label}
-            saveDay={ownKpis.saveDay}
-          />
-        )}
-        {tab === 'prospeccao' && (
-          <TabProspeccao
-            kpisProsp={display.kpisProsp}
-            prospects={display.prospects}
-            readOnly={display.readOnly}
-            viewLabel={display.label}
-            saveDay={ownKpisProsp.saveDay}
-            addProspect={ownProspects.addProspect}
-            updateProspect={ownProspects.updateProspect}
-            deleteProspect={ownProspects.deleteProspect}
-            addVenda={ownVendas.addVenda}
-            refetchVendas={ownVendas.refetch}
-          />
-        )}
-        {tab === 'crm' && (
-          <TabCRM
-            vendas={display.vendas}
-            readOnly={display.readOnly}
-            viewLabel={display.label}
-            addVenda={ownVendas.addVenda}
-            updateVenda={ownVendas.updateVenda}
-            deleteVenda={ownVendas.deleteVenda}
-          />
-        )}
-        {tab === 'relatorios' && (
-          <TabRelatorios
-            kpis={display.kpis}
-            kpisProsp={display.kpisProsp}
-            vendas={display.vendas}
-            viewLabel={display.label}
-            isAdmin={isAdmin}
-            isTeamView={viewMode === 'team'}
-            admins={teamKpisHook.admins}
-            teamKpis={teamKpisHook.teamKpis}
-            teamKpisProsp={teamKpisProspHook.teamKpis}
-            teamVendas={teamVendasHook.teamVendas}
-          />
-        )}
+      <main style={{ maxWidth: 1500, margin: '0 auto', padding: '30px 24px' }}>
+        {tab === 'visao' && <TabVisaoGeral kpis={display.kpis} vendas={display.vendas} readOnly={display.readOnly} viewLabel={display.label} saveDay={ownKpis.saveDay} />}
+        {tab === 'prospeccao' && <TabProspeccao kpisProsp={display.kpisProsp} prospects={display.prospects} readOnly={display.readOnly} viewLabel={display.label} saveDay={ownKpisProsp.saveDay} addProspect={ownProspects.addProspect} updateProspect={ownProspects.updateProspect} deleteProspect={ownProspects.deleteProspect} addVenda={ownVendas.addVenda} refetchVendas={ownVendas.refetch} />}
+        {tab === 'pipeline' && <TabPipeline prospects={display.prospects} readOnly={display.readOnly} updateProspect={ownProspects.updateProspect} />}
+        {tab === 'calls' && (ownModule ? <TabCalls calls={salesOS.calls} readOnly={false} addCall={salesOS.addCall} updateCall={salesOS.updateCall} deleteCall={salesOS.deleteCall} /> : teamNotice)}
+        {tab === 'acoes' && (ownModule ? <TabAcoes acoes={salesOS.acoes} readOnly={false} addAcao={salesOS.addAcao} updateAcao={salesOS.updateAcao} deleteAcao={salesOS.deleteAcao} /> : teamNotice)}
+        {tab === 'crm' && <TabCRM vendas={display.vendas} readOnly={display.readOnly} viewLabel={display.label} addVenda={ownVendas.addVenda} updateVenda={ownVendas.updateVenda} deleteVenda={ownVendas.deleteVenda} />}
+        {tab === 'metas' && (ownModule ? <TabMetas metas={salesOS.metas} vendas={ownVendas.vendas} calls={salesOS.calls} kpisProsp={ownKpisProsp.kpis} readOnly={false} upsertMeta={salesOS.upsertMeta} /> : teamNotice)}
+        {tab === 'relatorios' && <TabRelatorios kpis={display.kpis} kpisProsp={display.kpisProsp} vendas={display.vendas} viewLabel={display.label} isAdmin={isAdmin} isTeamView={viewMode === 'team'} admins={teamKpisHook.admins} teamKpis={teamKpisHook.teamKpis} teamKpisProsp={teamKpisProspHook.teamKpis} teamVendas={teamVendasHook.teamVendas} />}
       </main>
     </div>
   );
