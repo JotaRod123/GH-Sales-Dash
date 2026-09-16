@@ -6,8 +6,8 @@ const normalizeOrigem = (origem) => origem === 'Tráfego' || origem === 'Trafego
 const normalizeVenda = (v) => {
   const valor = Number(v.valor || 0);
   const origem = normalizeOrigem(v.origem);
-  const dentroEvento = v.dentro_evento ?? v.dentroEvento ?? (origem === 'Evento');
-  const percentual = Number(v.comissao_percentual ?? v.comissaoPercentual ?? (dentroEvento ? 1 : 2.5));
+  const dentroEvento = origem === 'Evento';
+  const percentual = dentroEvento ? 1 : 2.5;
   return {
     nome: v.nome,
     telefone: v.telefone || '',
@@ -18,7 +18,7 @@ const normalizeVenda = (v) => {
     observacao: v.observacao || '',
     prospect_id: v.prospect_id || v.prospectId || null,
     condicao_pagamento: v.condicao_pagamento || v.condicaoPagamento || null,
-    dentro_evento: Boolean(dentroEvento),
+    dentro_evento: dentroEvento,
     comissao_percentual: percentual,
     comissao_valor: valor * percentual / 100,
   };
