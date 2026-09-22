@@ -24,15 +24,17 @@ export function useSalesOS(userId) {
   useEffect(() => { refetch(); }, [refetch]);
 
   const addCall = async (payload) => {
-    const { error } = await supabase.from('calls').insert({ ...payload, user_id: userId });
+    const { data, error } = await supabase.from('calls').insert({ ...payload, user_id: userId }).select('*').single();
     if (error) throw error;
-    await refetch();
+    setCalls((prev) => [...prev, data].sort((a,b) => new Date(a.data_hora) - new Date(b.data_hora)));
+    return data;
   };
 
   const updateCall = async (id, payload) => {
-    const { error } = await supabase.from('calls').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', userId);
+    const { data, error } = await supabase.from('calls').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', userId).select('*').single();
     if (error) throw error;
-    await refetch();
+    setCalls((prev) => prev.map((c) => c.id === id ? data : c));
+    return data;
   };
 
   const deleteCall = async (id) => {
