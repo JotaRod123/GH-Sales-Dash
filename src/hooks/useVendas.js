@@ -17,6 +17,7 @@ const normalizeVenda = (v) => {
     valor,
     observacao: v.observacao || '',
     prospect_id: v.prospect_id || v.prospectId || null,
+    call_id: v.call_id || v.callId || null,
     condicao_pagamento: v.condicao_pagamento || v.condicaoPagamento || null,
     dentro_evento: dentroEvento,
     comissao_percentual: percentual,
@@ -45,13 +46,16 @@ export function useVendas(userId) {
     const tempId = `temp-${Date.now()}`;
     setVendas((prev) => [...prev, { id: tempId, created_at: new Date().toISOString(), ...payload }]);
 
-    const { data, error } = await supabase.from('vendas').insert(payload).select('*').single();
+    const query = payload.call_id
+      ? supabase.from('vendas').upsert(payload, { onConflict: 'call_id' }).select('*').single()
+      : supabase.from('vendas').insert(payload).select('*').single();
+    const { data, error } = await query;
     if (error) {
       setVendas((prev) => prev.filter((item) => item.id !== tempId));
       return { error };
     }
     setVendas((prev) => prev.map((item) => item.id === tempId ? normalizeFetched(data) : item));
-    return { error: null };
+    return { data: normalizeFetched(data), error: null };
   };
 
   const updateVenda = async (id, v) => {
