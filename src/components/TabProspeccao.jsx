@@ -44,7 +44,7 @@ function Modal({ title, onClose, children, width=560 }) {
 const emptyProspect = { nome:'', whatsapp:'', instagram:'', status:'Contatado', observacao:'' };
 const emptyVenda = { nome:'', telefone:'', dataVenda:today(), origem:'Prospeccao', produto:'Selecione', produtoOutros:'', valor:'', observacao:'' };
 
-export default function TabProspeccao({ kpisProsp=[], prospects=[], readOnly, viewLabel, saveDay, addProspect, updateProspect, deleteProspect, addVenda, refetchVendas }) {
+export default function TabProspeccao({ kpisProsp=[], prospects=[], readOnly, viewLabel, saveDay, addProspect, updateProspect, deleteProspect, addVenda, refetchVendas, addCall, deleteCall }) {
   const todayStr = today();
   const [selectedDate,setSelectedDate] = useState(todayStr);
   const day = useMemo(()=>kpisProsp.filter(k=>k.data===selectedDate).reduce((a,k)=>({prospectados:a.prospectados+(k.prospectados||0),contatados:a.contatados+(k.contatados||0),responderam:a.responderam+(k.responderam||0),reuniaoAgendada:a.reuniaoAgendada+(k.reuniao_agendada||0),convertido:a.convertido+(k.convertido||0)}),{prospectados:0,contatados:0,responderam:0,reuniaoAgendada:0,convertido:0}),[kpisProsp,selectedDate]);
@@ -76,9 +76,37 @@ export default function TabProspeccao({ kpisProsp=[], prospects=[], readOnly, vi
     const produto = venda.produto==='Outros'?venda.produtoOutros:venda.produto;
     if(!produto || produto==='Selecione' || !venda.valor) return;
     setSaving(true);
-    const {error}=await addVenda({...venda, origem:normalizeOrigin(venda.origem), produto, prospectId:convert.id});
-    if(!error){ await updateProspect(convert.id,{...convert,status:'Convertido'}); if(refetchVendas) await refetchVendas(); setConvert(null); setVenda(emptyVenda); }
-    setSaving(false);
+    let callCriada = null;
+    try {
+      const origem = normalizeOrigin(venda.origem);
+      if (addCall) {
+        callCriada = await addCall({
+          prospect_id: convert.id,
+          lead_nome: convert.nome,
+          data_hora: new Date().toISOString(),
+          tipo: 'fechamento',
+          produto,
+          status: 'realizada',
+          resultado: 'comprou',
+          valor_venda: Number(venda.valor),
+          origem_venda: origem,
+          proximo_passo: '',
+          observacao: 'Call criada automaticamente ao converter prospect.'
+        });
+      }
+      const {error}=await addVenda({...venda, origem, produto, prospectId:convert.id, callId:callCriada?.id || null});
+      if(error){
+        if(callCriada?.id && deleteCall) await deleteCall(callCriada.id);
+        setSaving(false);
+        return;
+      }
+      await updateProspect(convert.id,{...convert,status:'Convertido'});
+      if(refetchVendas) await refetchVendas();
+      setConvert(null);
+      setVenda(emptyVenda);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const monthPrefix = todayStr.slice(0,7);
