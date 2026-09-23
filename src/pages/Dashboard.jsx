@@ -80,14 +80,28 @@ export default function Dashboard({ profile, isAdmin, isEspectador, onSignOut })
   return (
     <div style={{ minHeight:'100vh', background:T.bg, color:T.text, fontFamily:"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       <style>{`
-        .gh-shell{display:grid;grid-template-columns:230px minmax(0,1fr);min-height:100vh}
-        .gh-sidebar{position:sticky;top:0;height:100vh;background:#08111B;border-right:1px solid ${T.border};padding:18px 12px;display:flex;flex-direction:column}
+        .gh-shell{display:grid;grid-template-columns:230px minmax(0,1fr);min-height:100vh;width:100%;max-width:100%;overflow:hidden}
+        .gh-sidebar{position:sticky;top:0;height:100vh;background:#08111B;border-right:1px solid ${T.border};padding:18px 12px;display:flex;flex-direction:column;min-width:0}
         .gh-nav{display:flex;flex-direction:column;gap:4px}
-        .gh-main{padding:22px 24px 34px;min-width:0}
-        .gh-topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
+        .gh-main{padding:22px 24px 34px;min-width:0;width:100%;max-width:100%;overflow:hidden}
+        .gh-topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px;min-width:0}
         .gh-mobile-nav{display:none}
         @media(max-width:900px){
-          .gh-shell{display:block}.gh-sidebar{position:relative;height:auto;border-right:0;border-bottom:1px solid ${T.border};padding:12px}.gh-nav{display:none}.gh-mobile-nav{display:flex;gap:6px;overflow:auto;padding-top:10px}.gh-main{padding:16px}.gh-topbar{align-items:flex-start;flex-direction:column}
+          .gh-shell{display:block;width:100%;max-width:100%;overflow:hidden}
+          .gh-sidebar{position:relative;height:auto;width:100%;max-width:100%;border-right:0;border-bottom:1px solid ${T.border};padding:10px 12px 12px}
+          .gh-nav{display:none}
+          .gh-mobile-nav{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;padding:10px 0 2px;width:100%;max-width:100%;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+          .gh-mobile-nav::-webkit-scrollbar{display:none}
+          .gh-main{padding:14px 12px 28px;width:100%;max-width:100%;overflow:hidden}
+          .gh-topbar{align-items:stretch;flex-direction:column;gap:12px;margin-bottom:16px}
+          .gh-topbar>div:last-child{width:100%}
+          .gh-topbar select{width:100%;min-height:42px;font-size:14px!important}
+        }
+        @media(max-width:520px){
+          .gh-main{padding:12px 10px 24px}
+          .gh-sidebar{padding-left:10px;padding-right:10px}
+          .gh-mobile-nav button{min-height:38px;padding:9px 12px!important;font-size:12px!important}
+          .gh-topbar h1{font-size:23px!important}
         }
       `}</style>
       <div className="gh-shell">
