@@ -7,6 +7,13 @@ const ORIGENS = ['Trafego','Evento','Prospeccao','Indicacao'];
 const formatBRL = (v) => (parseFloat(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const formatDateBR = (s) => { if (!s) return ''; const p = s.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; };
 const today = () => new Date().toISOString().slice(0, 10);
+const formatPhone = (value = '') => {
+  const d = String(value).replace(/\D/g, '').slice(0, 11);
+  if (!d) return '';
+  if (d.length <= 2) return `(${d}`;
+  if (d.length <= 7) return `(${d.slice(0,2)}) ${d.slice(2)}`;
+  return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+};
 
 const ORIGEM_COLORS = {
   'Trafego': T.kpi.abordagem,
@@ -205,7 +212,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
           <Card>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(195px, 1fr))', gap: 14, marginBottom: 14 }}>
               <Input label="Nome" value={form.nome} onChange={(v) => sf('nome', v)} error={errors.nome} placeholder="Nome do cliente" />
-              <Input label="Telefone (opcional)" value={form.telefone} onChange={(v) => sf('telefone', v)} placeholder="(11) 99999-9999" />
+              <Input label="Telefone (opcional)" value={form.telefone} onChange={(v) => sf('telefone', formatPhone(v))} placeholder="(11) 99999-9999" />
               <Input label="Data da venda" type="date" value={form.dataVenda} onChange={(v) => sf('dataVenda', v)} error={errors.dataVenda} />
               <Select label="Origem" value={form.origem || 'Selecione'} onChange={(v) => sf('origem', v)} options={['Selecione', ...ORIGENS]} error={errors.origem} />
               <Select label="Produto" value={form.produto || 'Selecione'} onChange={(v) => sf('produto', v)} options={['Selecione', ...PRODUTOS]} error={errors.produto} />
@@ -289,7 +296,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
         <Modal title="Editar venda" onClose={() => setEditVenda(null)}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
             <Input label="Nome" value={editVenda.nome} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { nome: v }))} error={editErrors.nome} />
-            <Input label="Telefone (opcional)" value={editVenda.telefone} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { telefone: v }))} />
+            <Input label="Telefone (opcional)" value={editVenda.telefone} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { telefone: formatPhone(v) }))} />
             <Input label="Data da venda" type="date" value={editVenda.dataVenda} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { dataVenda: v }))} error={editErrors.dataVenda} />
             <Select label="Origem" value={editVenda.origem} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { origem: v }))} options={ORIGENS} error={editErrors.origem} />
             <Select label="Produto" value={editVenda.produto} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { produto: v }))} options={PRODUTOS} error={editErrors.produto} />
