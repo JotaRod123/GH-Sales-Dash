@@ -49,20 +49,29 @@ export function useVendas(userId) {
   useEffect(() => { fetch(); }, [fetch]);
 
   const addVenda = async (v) => {
-    const payload = { user_id: userId, ...normalizeVenda(v) };
-    const tempId = `temp-${Date.now()}`;
-    setVendas((prev) => [...prev, { id: tempId, created_at: new Date().toISOString(), ...payload }]);
-
-    const query = payload.call_id
-      ? supabase.from('vendas').upsert(payload, { onConflict: 'call_id' }).select('*').single()
-      : supabase.from('vendas').insert(payload).select('*').single();
-    const { data, error } = await query;
-    if (error) {
-      setVendas((prev) => prev.filter((item) => item.id !== tempId));
-      return { error };
+    if (!userId) {
+      return { error: { message: 'Sessão sem user_id. Faça login novamente.' } };
     }
-    setVendas((prev) => prev.map((item) => item.id === tempId ? normalizeFetched(data) : item));
-    return { data: normalizeFetched(data), error: null };
+
+    const payload = { user_id: userId, ...normalizeVenda(v) };
+
+    try {
+      const result = payload.call_id
+        ? await supabase.from('vendas').upsert(payload, { onConflict: 'call_id' }).select('*').single()
+        : await supabase.from('vendas').insert(payload).select('*').single();
+
+      const { data, error } = result;
+      if (error) return { error };
+
+      const saved = normalizeFetched(data);
+      setVendas((prev) => {
+        const withoutSame = prev.filter((item) => item.id !== saved.id && (!saved.call_id || item.call_id !== saved.call_id));
+        return [...withoutSame, saved].sort((a,b) => String(a.data_venda || '').localeCompare(String(b.data_venda || '')));
+      });
+      return { data: saved, error: null };
+    } catch (error) {
+      return { error: { message: error?.message || 'Falha inesperada ao salvar venda.' } };
+    }
   };
 
   const updateVenda = async (id, v) => {
