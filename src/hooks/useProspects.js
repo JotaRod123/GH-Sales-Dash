@@ -25,7 +25,14 @@ const normalizeProspect = (p) => ({
   motivo_perda: p.motivo_perda || null,
 });
 
-const normalizeFetched = (row) => ({ ...row, origem: normalizeOrigem(row.origem) });
+const phoneFrom = (p = {}) => p.whatsapp || (String(p.contato || '').match(/\d/) ? p.contato : '') || '';
+
+const normalizeFetched = (row) => ({
+  ...row,
+  origem: normalizeOrigem(row.origem),
+  whatsapp: phoneFrom(row) || null,
+  contato: row.contato || row.whatsapp || row.instagram || '',
+});
 
 export function useProspects(userId) {
   const [prospects, setProspects] = useState([]);
