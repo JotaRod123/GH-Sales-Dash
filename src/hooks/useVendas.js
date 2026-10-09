@@ -2,6 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
 const normalizeOrigem = (origem) => origem === 'Tráfego' || origem === 'Trafego' ? 'Tráfego - Clint' : origem;
+const normalizePhone = (value = '') => {
+  const d = String(value).replace(/\D/g, '').slice(0, 11);
+  if (!d) return '';
+  if (d.length <= 2) return `(${d}`;
+  if (d.length <= 7) return `(${d.slice(0,2)}) ${d.slice(2)}`;
+  return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+};
 
 const normalizeVenda = (v) => {
   const valor = Number(v.valor || 0);
@@ -10,7 +17,7 @@ const normalizeVenda = (v) => {
   const percentual = dentroEvento ? 1 : 2.5;
   return {
     nome: v.nome,
-    telefone: v.telefone || '',
+    telefone: normalizePhone(v.telefone || ''),
     data_venda: v.data_venda || v.dataVenda,
     origem,
     produto: v.produto,
@@ -25,7 +32,7 @@ const normalizeVenda = (v) => {
   };
 };
 
-const normalizeFetched = (row) => ({ ...row, origem: normalizeOrigem(row.origem) });
+const normalizeFetched = (row) => ({ ...row, origem: normalizeOrigem(row.origem), telefone: normalizePhone(row.telefone || '') });
 
 export function useVendas(userId) {
   const [vendas, setVendas] = useState([]);
