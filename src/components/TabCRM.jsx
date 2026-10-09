@@ -163,6 +163,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
   const [fOrigem, setFOrigem] = useState('');
   const [fValorMin, setFValorMin] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const sf = (f, v) => setForm((p) => Object.assign({}, p, { [f]: v }));
 
@@ -170,11 +171,22 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
     const errs = validateVenda(form);
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setSaving(true);
+    setSaveError('');
     const produto = form.produto === 'Outros' ? form.produtoOutros : form.produto;
-    await addVenda({ ...form, produto });
-    setSaving(false);
-    setForm(Object.assign({}, EMPTY));
-    setErrors({});
+    try {
+      const result = await addVenda({ ...form, produto });
+      if (result?.error) {
+        const detail = result.error.message || result.error.details || 'Falha ao gravar no banco.';
+        setSaveError('A venda NÃO foi salva no banco: ' + detail);
+        return;
+      }
+      setForm(Object.assign({}, EMPTY));
+      setErrors({});
+    } catch (err) {
+      setSaveError('A venda NÃO foi salva no banco: ' + (err?.message || 'erro inesperado.'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleEditSave = async () => {
@@ -222,6 +234,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
             <div style={{ marginBottom: 18 }}>
               <Textarea label="Observacoes" value={form.observacao} onChange={(v) => sf('observacao', v)} placeholder="Detalhes adicionais sobre a venda..." />
             </div>
+            {saveError && <div style={{marginBottom:12,padding:'10px 12px',border:'1px solid '+T.danger,borderRadius:6,color:T.danger,fontSize:12,fontWeight:700}}>{saveError}</div>}
             <Btn onClick={handleAdd} disabled={saving}>{saving ? 'Salvando...' : 'Registrar venda'}</Btn>
           </Card>
         </div>
