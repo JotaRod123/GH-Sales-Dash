@@ -34,7 +34,7 @@ const normalizeVenda = (v) => {
 
 const normalizeFetched = (row) => ({ ...row, origem: normalizeOrigem(row.origem), telefone: normalizePhone(row.telefone || '') });
 
-export function useVendas(userId) {
+export function useVendas(userId, accessToken) {
   const [vendas, setVendas] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,9 +56,6 @@ export function useVendas(userId) {
     const payload = { user_id: userId, ...normalizeVenda(v) };
 
     try {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) return { error: sessionError };
-      const accessToken = sessionData?.session?.access_token;
       if (!accessToken) {
         return { error: { message: 'Sessão expirada. Faça login novamente.' } };
       }
