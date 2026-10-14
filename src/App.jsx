@@ -71,6 +71,7 @@ export default function App() {
   return (
     <Dashboard
       profile={profile}
+      accessToken={session?.access_token || ''}
       isAdmin={profile.role === 'administrador'}
       isEspectador={profile.role === 'espectador'}
       onSignOut={async () => {
