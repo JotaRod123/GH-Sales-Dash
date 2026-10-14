@@ -25,14 +25,14 @@ const NAV = [
   { key: 'metas', label: 'Metas' },
 ];
 
-export default function Dashboard({ profile, isAdmin, isEspectador, onSignOut }) {
+export default function Dashboard({ profile, accessToken, isAdmin, isEspectador, onSignOut }) {
   const [tab, setTab] = useState('visao');
   const [viewMode, setViewMode] = useState(isEspectador ? 'team' : 'mine');
 
   const ownKpis = useKpis(profile.id);
   const ownKpisProsp = useKpisProspeccao(profile.id);
   const ownProspects = useProspects(profile.id);
-  const ownVendas = useVendas(profile.id);
+  const ownVendas = useVendas(profile.id, accessToken);
   const salesOS = useSalesOS(profile.id);
 
   const canSeeTeam = isAdmin || isEspectador;
