@@ -38,7 +38,7 @@ export function useVendas(userId) {
   const [vendas, setVendas] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetch = useCallback(async () => {
+  const fetchVendas = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     const { data } = await supabase.from('vendas').select('*').eq('user_id', userId).order('data_venda', { ascending: true });
@@ -46,7 +46,7 @@ export function useVendas(userId) {
     setLoading(false);
   }, [userId]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => { fetchVendas(); }, [fetchVendas]);
 
   const addVenda = async (v) => {
     if (!userId) {
@@ -69,7 +69,7 @@ export function useVendas(userId) {
 
       let response;
       try {
-        response = await fetch(`${SUPABASE_URL}/rest/v1/vendas${query}`, {
+        response = await window.fetch(`${SUPABASE_URL}/rest/v1/vendas${query}`, {
           method: 'POST',
           signal: controller.signal,
           headers: {
@@ -129,14 +129,14 @@ export function useVendas(userId) {
     return { error };
   };
 
-  return { vendas, loading, addVenda, updateVenda, deleteVenda, refetch: fetch };
+  return { vendas, loading, addVenda, updateVenda, deleteVenda, refetch: fetchVendas };
 }
 
 export function useTeamVendas(enabled) {
   const [teamVendas, setTeamVendas] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetch = useCallback(async () => {
+  const fetchTeamVendas = useCallback(async () => {
     if (!enabled) { setLoading(false); return; }
     setLoading(true);
     const { data } = await supabase.from('vendas').select('*').order('data_venda', { ascending: true });
@@ -144,7 +144,7 @@ export function useTeamVendas(enabled) {
     setLoading(false);
   }, [enabled]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => { fetchTeamVendas(); }, [fetchTeamVendas]);
 
-  return { teamVendas, loading, refetch: fetch };
+  return { teamVendas, loading, refetch: fetchTeamVendas };
 }
