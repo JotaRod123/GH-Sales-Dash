@@ -40,13 +40,17 @@ export default function TabRelatoriosComTexto(props) {
     const taxaConversao = prosp.prospectados ? (prosp.convertidos / prosp.prospectados) * 100 : 0;
 
     const porOrigem = {};
+    const porProduto = {};
     vMes.forEach((v) => {
       const origem = v.origem === 'Tráfego' || v.origem === 'Trafego' ? 'Tráfego - Clint' : (v.origem || 'Não informado');
+      const produto = v.produto || 'Não informado';
       porOrigem[origem] = (porOrigem[origem] || 0) + 1;
+      porProduto[produto] = (porProduto[produto] || 0) + 1;
     });
     const origens = Object.entries(porOrigem).sort((a,b)=>b[1]-a[1]).map(([o,q]) => `• ${o}: ${q}`).join('\n');
+    const produtos = Object.entries(porProduto).sort((a,b)=>b[1]-a[1]).map(([p,q]) => `• ${p}: ${q}`).join('\n');
 
-    return `📊 *RELATÓRIO COMERCIAL — ${viewLabel}*\nPeríodo: ${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}\n\n*COMERCIAL*\n• Leads novos: ${comercial.leads}\n• Abordagens: ${comercial.abordagens}\n• Follow-ups: ${comercial.fups}\n• Em negociação: ${comercial.negociacao}\n• Fechados: ${comercial.fechados}\n\n*PROSPECÇÃO*\n• Prospectados: ${prosp.prospectados}\n• Contatados: ${prosp.contatados}\n• Responderam: ${prosp.responderam}\n• Reuniões agendadas: ${prosp.reunioes}\n• Convertidos: ${prosp.convertidos}\n• Taxa de resposta: ${taxaResposta.toFixed(1)}%\n• Conversão da prospecção: ${taxaConversao.toFixed(1)}%\n\n*VENDAS*\n• Vendas: ${vMes.length}\n• Receita: ${brl(receita)}\n• Comissão: ${brl(comissao)}\n• Ticket médio: ${brl(ticket)}${origens ? `\n\n*VENDAS POR ORIGEM*\n${origens}` : ''}`;
+    return `📊 *RELATÓRIO COMERCIAL — ${viewLabel}*\nPeríodo: ${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}\n\n*COMERCIAL*\n• Leads novos: ${comercial.leads}\n• Abordagens: ${comercial.abordagens}\n• Follow-ups: ${comercial.fups}\n• Em negociação: ${comercial.negociacao}\n• Fechados: ${comercial.fechados}\n\n*PROSPECÇÃO*\n• Prospectados: ${prosp.prospectados}\n• Contatados: ${prosp.contatados}\n• Responderam: ${prosp.responderam}\n• Reuniões agendadas: ${prosp.reunioes}\n• Convertidos: ${prosp.convertidos}\n• Taxa de resposta: ${taxaResposta.toFixed(1)}%\n• Conversão da prospecção: ${taxaConversao.toFixed(1)}%\n\n*VENDAS*\n• Vendas: ${vMes.length}\n• Receita: ${brl(receita)}\n• Comissão: ${brl(comissao)}\n• Ticket médio: ${brl(ticket)}${produtos ? `\n\n*PRODUTOS VENDIDOS*\n${produtos}` : ''}${origens ? `\n\n*VENDAS POR ORIGEM*\n${origens}` : ''}`;
   }, [kpis, kpisProsp, vendas, viewLabel]);
 
   const copyReport = async () => {
