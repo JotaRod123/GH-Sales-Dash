@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
 
 const normalizeOrigem = (origem) => origem === 'Tráfego' || origem === 'Trafego' ? 'Tráfego - Clint' : origem;
 const normalizePhone = (value = '') => {
@@ -56,21 +56,53 @@ export function useVendas(userId) {
     const payload = { user_id: userId, ...normalizeVenda(v) };
 
     try {
-      const result = payload.call_id
-        ? await supabase.from('vendas').upsert(payload, { onConflict: 'call_id' }).select('*').single()
-        : await supabase.from('vendas').insert(payload).select('*').single();
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) return { error: sessionError };
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        return { error: { message: 'Sessão expirada. Faça login novamente.' } };
+      }
 
-      const { data, error } = result;
-      if (error) return { error };
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const query = payload.call_id ? '?on_conflict=call_id&select=*' : '?select=*';
 
-      const saved = normalizeFetched(data);
+      let response;
+      try {
+        response = await fetch(`${SUPABASE_URL}/rest/v1/vendas${query}`, {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            Prefer: payload.call_id ? 'resolution=merge-duplicates,return=representation' : 'return=representation',
+          },
+          body: JSON.stringify(payload),
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        return { error: { message: body?.message || body?.details || `Erro HTTP ${response.status}` } };
+      }
+
+      const row = Array.isArray(body) ? body[0] : body;
+      if (!row) return { error: { message: 'Supabase não retornou a venda salva.' } };
+
+      const saved = normalizeFetched(row);
       setVendas((prev) => {
         const withoutSame = prev.filter((item) => item.id !== saved.id && (!saved.call_id || item.call_id !== saved.call_id));
         return [...withoutSame, saved].sort((a,b) => String(a.data_venda || '').localeCompare(String(b.data_venda || '')));
       });
       return { data: saved, error: null };
     } catch (error) {
-      return { error: { message: error?.message || 'Falha inesperada ao salvar venda.' } };
+      const message = error?.name === 'AbortError'
+        ? 'O Supabase demorou mais de 8 segundos para responder. Tente novamente.'
+        : (error?.message || 'Falha inesperada ao salvar venda.');
+      return { error: { message } };
     }
   };
 
