@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { CAMPAIGNS } from '../lib/campaigns';
 import { T } from '../lib/theme';
@@ -55,25 +55,25 @@ function Label({ children }) {
   return <div style={{ fontSize:10, fontWeight:800, letterSpacing:'.09em', textTransform:'uppercase', color:T.textSec }}>{children}</div>;
 }
 function KpiCard({ label, value, editable, onChange }) {
-  const [editing,setEditing] = useState(false);
-  const [local,setLocal] = useState(String(value));
-  const ref = useRef();
-  useEffect(()=>setLocal(String(value)),[value]);
-  const commit=()=>{ setEditing(false); onChange(parseInt(local) || 0); };
-  return <div style={{ background:T.surface,border:`1px solid ${T.border}`,borderRadius:10,padding:'15px 16px',minHeight:100 }}>
+  return <div style={{ background:T.surface,border:`1px solid ${editable ? T.borderMid : T.border}`,borderRadius:10,padding:'15px 16px',minHeight:100 }}>
     <Label>{label}</Label>
-    {editing && editable ? <input ref={ref} autoFocus type="number" min="0" value={local}
-      onChange={e=>{setLocal(e.target.value);onChange(parseInt(e.target.value)||0);}}
-      onBlur={commit} onKeyDown={e=>e.key==='Enter'&&commit()}
-      style={{marginTop:10,width:'100%',background:'transparent',border:0,borderBottom:`1px solid ${T.accent}`,outline:0,color:T.text,fontSize:28,fontWeight:900}}/>
-      : <div onClick={()=>{if(editable){setEditing(true);setTimeout(()=>ref.current?.select(),30)}}}
-        style={{marginTop:10,fontSize:28,fontWeight:900,color:T.text,cursor:editable?'text':'default'}}>{value}</div>}
+    {editable ? (
+      <input
+        type="number"
+        min="0"
+        value={value}
+        onChange={e=>onChange(Math.max(0, parseInt(e.target.value) || 0))}
+        style={{marginTop:10,width:'100%',boxSizing:'border-box',background:T.bg,border:`1px solid ${T.border}`,borderRadius:7,outline:'none',color:T.text,fontSize:28,fontWeight:900,padding:'7px 9px'}}
+      />
+    ) : (
+      <div style={{marginTop:10,fontSize:28,fontWeight:900,color:T.text}}>{value}</div>
+    )}
   </div>;
 }
 
 export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly, viewLabel, saveCampaignDay }) {
   const rows = useMemo(()=>campaignKpis.map(normalize),[campaignKpis]);
-  const [campaign,setCampaign] = useState('Geral');
+  const [campaign,setCampaign] = useState('MonsterDay');
   const [date,setDate] = useState(today());
   const [current,setCurrent] = useState({ ...EMPTY });
   const [saving,setSaving] = useState(false);
@@ -183,7 +183,7 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
         <div><Label>Data</Label><input type="date" value={date} max={today()} onChange={e=>setDate(e.target.value)}
           style={{width:'100%',marginTop:6,background:T.bg,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,padding:'9px 11px',colorScheme:'dark'}}/></div>
         <div style={{fontSize:12,color:T.textMuted,lineHeight:1.5}}>
-          {isGeneral ? 'Geral soma automaticamente todas as campanhas.' : editable ? 'Clique em qualquer KPI para editar.' : 'Visualização consolidada.'}
+          {isGeneral ? 'Geral soma automaticamente todas as campanhas.' : editable ? 'Edite os campos abaixo e salve os KPIs do dia.' : 'Visualização consolidada.'}
         </div>
       </div>
     </Card>
