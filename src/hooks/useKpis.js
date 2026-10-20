@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-export function useKpis(userId) {
+export function useKpis(userId, accessToken) {
   const [kpis, setKpis] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetch = useCallback(async () => {
+  const fetchKpis = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     const { data } = await supabase
@@ -19,9 +19,12 @@ export function useKpis(userId) {
     setLoading(false);
   }, [userId]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => { fetchKpis(); }, [fetchKpis]);
 
   const saveDay = async (values, date) => {
+    if (!userId) return { error: { message: 'Sessão sem user_id. Faça login novamente.' } };
+    if (!accessToken) return { error: { message: 'Sessão expirada. Faça login novamente.' } };
+
     const payload = {
       user_id: userId,
       data: date || today(),
@@ -33,32 +36,52 @@ export function useKpis(userId) {
       updated_at: new Date().toISOString(),
     };
 
-    const previous = kpis;
-    setKpis((prev) => {
-      const exists = prev.some((item) => item.data === payload.data);
-      if (exists) return prev.map((item) => item.data === payload.data ? { ...item, ...payload } : item);
-      return [...prev, { id: `temp-${payload.data}`, ...payload }].sort((a, b) => a.data.localeCompare(b.data));
-    });
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
 
-    const { data, error } = await supabase
-      .from('kpis_diarios')
-      .upsert(payload, { onConflict: 'user_id,data' })
-      .select('*')
-      .single();
+      let response;
+      try {
+        response = await window.fetch(
+          `${SUPABASE_URL}/rest/v1/kpis_diarios?on_conflict=user_id,data&select=*`,
+          {
+            method: 'POST',
+            signal: controller.signal,
+            headers: {
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+              Prefer: 'resolution=merge-duplicates,return=representation',
+            },
+            body: JSON.stringify(payload),
+          }
+        );
+      } finally {
+        clearTimeout(timeout);
+      }
 
-    if (error) {
-      setKpis(previous);
-      return { error };
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        return { error: { message: body?.message || body?.details || `Erro HTTP ${response.status}` } };
+      }
+
+      const row = Array.isArray(body) ? body[0] : body;
+      if (!row) return { error: { message: 'Supabase não retornou os KPIs salvos.' } };
+
+      setKpis((prev) => {
+        const without = prev.filter((item) => item.data !== payload.data);
+        return [...without, row].sort((a, b) => a.data.localeCompare(b.data));
+      });
+      return { data: row, error: null };
+    } catch (error) {
+      const message = error?.name === 'AbortError'
+        ? 'O Supabase demorou mais de 8 segundos para responder. Tente novamente.'
+        : (error?.message || 'Falha inesperada ao salvar KPIs.');
+      return { error: { message } };
     }
-
-    setKpis((prev) => {
-      const without = prev.filter((item) => item.data !== payload.data);
-      return [...without, data].sort((a, b) => a.data.localeCompare(b.data));
-    });
-    return { error: null };
   };
 
-  return { kpis, loading, saveDay, refetch: fetch };
+  return { kpis, loading, saveDay, refetch: fetchKpis };
 }
 
 export function useTeamKpis(enabled) {
@@ -66,7 +89,7 @@ export function useTeamKpis(enabled) {
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetch = useCallback(async () => {
+  const fetchTeamKpis = useCallback(async () => {
     if (!enabled) { setLoading(false); return; }
     setLoading(true);
     const [kpisRes, profilesRes] = await Promise.all([
@@ -78,7 +101,7 @@ export function useTeamKpis(enabled) {
     setLoading(false);
   }, [enabled]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => { fetchTeamKpis(); }, [fetchTeamKpis]);
 
-  return { teamKpis, admins, loading, refetch: fetch };
+  return { teamKpis, admins, loading, refetch: fetchTeamKpis };
 }
