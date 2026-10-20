@@ -167,6 +167,7 @@ export default function TabVisaoGeral({ kpis, vendas, readOnly, viewLabel, saveD
   const displayValues = readOnly ? todayAgg : current;
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [chartPeriod, setChartPeriod] = useState('semanal');
   const [linePeriod, setLinePeriod] = useState('semanal');
   const now = new Date();
@@ -174,8 +175,13 @@ export default function TabVisaoGeral({ kpis, vendas, readOnly, viewLabel, saveD
   const handleChange = (k, v) => setCurrent((p) => Object.assign({}, p, { [k]: v }));
   const handleSave = async () => {
     setSaving(true);
-    await saveDay(current, selectedDate);
+    setSaveError('');
+    const result = await saveDay(current, selectedDate);
     setSaving(false);
+    if (result?.error) {
+      setSaveError(result.error.message || 'Não foi possível salvar os KPIs.');
+      return;
+    }
     setToast(true);
     setTimeout(() => setToast(false), 2500);
   };
@@ -184,6 +190,9 @@ export default function TabVisaoGeral({ kpis, vendas, readOnly, viewLabel, saveD
     (a, k) => ({ leadsNovos: a.leadsNovos + k.leadsNovos, abordagem: a.abordagem + k.abordagem, fup: a.fup + k.fup, emNegociacao: a.emNegociacao + k.emNegociacao, fechados: a.fechados + k.fechados }),
     { leadsNovos: 0, abordagem: 0, fup: 0, emNegociacao: 0, fechados: 0 }
   );
+
+  const selectedMonthStart = selectedDate.slice(0, 7) + '-01';
+  const monthAccumulated = aggregate(normalizedKpis.filter((k) => k.date >= selectedMonthStart && k.date <= selectedDate));
 
   const mStart = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
   const fatMes = vendas.filter((v) => v.data_venda >= mStart && v.data_venda <= todayStr).reduce((s, v) => s + (parseFloat(v.valor) || 0), 0);
@@ -231,6 +240,23 @@ export default function TabVisaoGeral({ kpis, vendas, readOnly, viewLabel, saveD
             {toast && <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: T.success, fontSize: 12, fontWeight: 600 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: T.success }} />KPIs salvos</div>}
           </div>
         )}
+        {saveError && !readOnly && (
+          <div style={{ marginTop: 10, padding: '10px 12px', border: '1px solid ' + T.danger, borderRadius: 8, color: T.danger, fontSize: 12, fontWeight: 700 }}>
+            KPIs NÃO foram salvos: {saveError}
+          </div>
+        )}
+      </Section>
+
+      <Section title={'Acumulado do mês · ' + MONTH_NAMES[Number(selectedDate.slice(5, 7)) - 1]}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {Object.keys(KPI_LABELS).map((k) => (
+            <div key={k} style={{ background: T.surface, border: '1px solid ' + T.border, borderTop: '2px solid ' + T.kpi[k], borderRadius: 10, padding: '16px 18px', flex: 1, minWidth: 140 }}>
+              <Label>{KPI_LABELS[k]}</Label>
+              <div style={{ fontSize: 28, fontWeight: 800, color: T.text, marginTop: 8 }}>{monthAccumulated[k]}</div>
+              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>até {formatDateBR(selectedDate)}</div>
+            </div>
+          ))}
+        </div>
       </Section>
 
       <Section title="Faturamento">
