@@ -1,321 +1,251 @@
-import { useState, useEffect, useRef } from 'react';
-import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-} from 'recharts';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { CAMPAIGNS } from '../lib/campaigns';
 import { T } from '../lib/theme';
 
-const KPI_LABELS = {
-  leadsNovos: 'Leads Novos',
-  abordagem: 'Abordagem',
-  fup: 'FUP',
-  emNegociacao: 'Em Negociacao',
-  fechados: 'Fechados',
-};
-
-const MONTH_NAMES = [
-  'Janeiro','Fevereiro','Marco','Abril','Maio','Junho',
-  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro',
-];
-
 const today = () => new Date().toISOString().slice(0, 10);
-const formatBRL = (v) => (parseFloat(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const formatDateBR = (s) => { if (!s) return ''; const p = s.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; };
+const brl = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const formatDateBR = (s) => {
+  if (!s) return '';
+  const [y,m,d] = String(s).slice(0,10).split('-');
+  return `${d}/${m}/${y}`;
+};
+const formatShort = (s) => formatDateBR(s).slice(0,5);
 
-const startOfWeek = (date) => {
-  const d = new Date(date);
-  const diff = d.getDay() === 0 ? -6 : 1 - d.getDay();
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().slice(0, 10);
-};
-const endOfWeek = (date) => {
-  const s = new Date(startOfWeek(date));
-  s.setDate(s.getDate() + 6);
-  return s.toISOString().slice(0, 10);
-};
-const daysInRange = (start, end) => {
-  const days = [], cur = new Date(start), last = new Date(end);
-  while (cur <= last) { days.push(cur.toISOString().slice(0, 10)); cur.setDate(cur.getDate() + 1); }
-  return days;
-};
-const weeksOfMonth = (year, month) => {
-  const weeks = [];
-  let cur = new Date(year, month, 1);
-  const last = new Date(year, month + 1, 0);
-  while (cur <= last) {
-    const wStart = cur.toISOString().slice(0, 10);
-    const wEnd = new Date(Math.min(new Date(endOfWeek(cur)).getTime(), last.getTime())).toISOString().slice(0, 10);
-    weeks.push({ start: wStart, end: wEnd });
-    cur = new Date(new Date(wEnd).getTime() + 86400000);
-  }
-  return weeks;
+const KPI_LABELS = {
+  leadsRecebidos: 'Leads recebidos',
+  leadsContatados: 'Leads contatados',
+  aguardandoResposta: 'Aguardando resposta',
+  emConversa: 'Em conversa',
+  reuniaoAgendamento: 'Reunião / agendamento',
+  propostaEnviada: 'Proposta / oferta enviada',
+  semInteresse: 'Sem interesse',
+  numeroErrado: 'Número cadastrado errado',
+  numeroTeste: 'Número de teste',
+  semContato: 'Sem contato realizado',
 };
 
-const normalizeKpi = (row) => ({
-  date: row.data,
-  leadsNovos: row.leads_novos || 0,
-  abordagem: row.abordagem || 0,
-  fup: row.fup || 0,
-  emNegociacao: row.em_negociacao || 0,
-  fechados: row.fechados || 0,
+const EMPTY = Object.keys(KPI_LABELS).reduce((a,k) => ({ ...a, [k]: 0 }), {});
+
+const normalize = (r) => ({
+  userId: r.user_id,
+  date: r.data,
+  campanha: r.campanha,
+  leadsRecebidos: Number(r.leads_recebidos || 0),
+  leadsContatados: Number(r.leads_contatados || 0),
+  aguardandoResposta: Number(r.aguardando_resposta || 0),
+  emConversa: Number(r.em_conversa || 0),
+  reuniaoAgendamento: Number(r.reuniao_agendamento || 0),
+  propostaEnviada: Number(r.proposta_enviada || 0),
+  semInteresse: Number(r.sem_interesse || 0),
+  numeroErrado: Number(r.numero_errado || 0),
+  numeroTeste: Number(r.numero_teste || 0),
+  semContato: Number(r.sem_contato || 0),
 });
 
-function Card({ children, style = {} }) {
-  return <div style={Object.assign({ background: T.surface, border: '1px solid ' + T.border, borderRadius: 10, padding: '20px 24px' }, style)}>{children}</div>;
+const sumRows = (rows) => rows.reduce((acc,row) => {
+  Object.keys(KPI_LABELS).forEach((k) => { acc[k] += Number(row[k] || 0); });
+  return acc;
+}, { ...EMPTY });
+
+function Card({ children, style={} }) {
+  return <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:12, padding:18, ...style }}>{children}</div>;
 }
-function Label({ children, color, style = {} }) {
-  return <div style={Object.assign({ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: color || T.textSec }, style)}>{children}</div>;
+function Label({ children }) {
+  return <div style={{ fontSize:10, fontWeight:800, letterSpacing:'.09em', textTransform:'uppercase', color:T.textSec }}>{children}</div>;
 }
-function Btn({ children, onClick, style = {}, disabled = false }) {
-  const [hov, setHov] = useState(false);
-  return (
-    <button onClick={disabled ? undefined : onClick} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={Object.assign({ border: 'none', borderRadius: 6, cursor: disabled ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 13, padding: '8px 18px', background: hov ? '#B8943B' : T.accent, color: '#0D1208', opacity: disabled ? 0.5 : 1, transition: 'all .15s', fontFamily: 'inherit' }, style)}>
-      {children}
-    </button>
-  );
-}
-function Toggle({ options, value, onChange }) {
-  return (
-    <div style={{ display: 'flex', background: T.bg, borderRadius: 7, padding: 3, gap: 2, border: '1px solid ' + T.border }}>
-      {options.map((o) => {
-        const active = value === o.value;
-        return (
-          <button key={o.value} onClick={() => onChange(o.value)} style={{ background: active ? T.surface : 'transparent', color: active ? T.text : T.textSec, border: active ? '1px solid ' + T.border : '1px solid transparent', borderRadius: 5, padding: '4px 13px', fontSize: 12, fontWeight: active ? 600 : 400, cursor: 'pointer', fontFamily: 'inherit' }}>
-            {o.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-function Section({ title, action, children, style = {} }) {
-  return (
-    <div style={Object.assign({ display: 'flex', flexDirection: 'column', gap: 14 }, style)}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <span style={{ color: T.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>{title}</span>
-        {action}
-      </div>
-      {children}
-    </div>
-  );
-}
-function ChartTooltip({ active, payload, label }) {
-  if (!active || !payload || !payload.length) return null;
-  return (
-    <div style={{ background: T.overlay, border: '1px solid ' + T.borderMid, borderRadius: 8, padding: '10px 14px', boxShadow: '0 8px 32px rgba(0,0,0,.6)' }}>
-      <div style={{ color: T.textSec, fontSize: 11, marginBottom: 7, fontWeight: 600 }}>{label}</div>
-      {payload.map((p) => (
-        <div key={p.dataKey} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
-          <span style={{ color: T.textSec, fontSize: 12 }}>{p.name}</span>
-          <span style={{ color: T.text, fontSize: 12, fontWeight: 600, marginLeft: 'auto', paddingLeft: 12 }}>{p.value}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-function KpiCard({ kpiKey, value, onChange, readOnly }) {
-  const [editing, setEditing] = useState(false);
-  const [local, setLocal] = useState(String(value));
-  const inputRef = useRef();
-  const color = T.kpi[kpiKey];
-  useEffect(() => setLocal(String(value)), [value]);
-  const commit = () => { setEditing(false); onChange(kpiKey, parseInt(local) || 0); };
-  return (
-    <div style={{ background: T.surface, border: '1px solid ' + T.border, borderTop: '2px solid ' + color, borderRadius: 10, padding: '18px 20px', flex: 1, minWidth: 140, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-        <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
-        <Label color={T.textSec}>{KPI_LABELS[kpiKey]}</Label>
-      </div>
-      <div onClick={() => { if (!readOnly) { setEditing(true); setTimeout(() => inputRef.current && inputRef.current.select(), 40); } }}>
-        {editing && !readOnly ? (
-          <input ref={inputRef} type="number" min={0} value={local}
-            onChange={(e) => { setLocal(e.target.value); onChange(kpiKey, parseInt(e.target.value) || 0); }}
-            onBlur={commit} onKeyDown={(e) => e.key === 'Enter' && commit()}
-            style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid ' + color, color: T.text, fontSize: 30, fontWeight: 700, width: '100%', outline: 'none', padding: '0 0 2px', fontFamily: 'inherit' }} />
-        ) : (
-          <div style={{ fontSize: 30, fontWeight: 700, color: T.text, cursor: readOnly ? 'default' : 'text', lineHeight: 1.1 }}>{value}</div>
-        )}
-      </div>
-    </div>
-  );
-}
-function MetricTile({ label, value, sub, color }) {
-  return (
-    <Card style={{ flex: 1 }}>
-      <Label style={{ marginBottom: 8 }}>{label}</Label>
-      <div style={{ fontSize: 26, fontWeight: 700, color: color || T.text, marginBottom: sub ? 4 : 0 }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: T.textMuted }}>{sub}</div>}
-    </Card>
-  );
+function KpiCard({ label, value, editable, onChange }) {
+  const [editing,setEditing] = useState(false);
+  const [local,setLocal] = useState(String(value));
+  const ref = useRef();
+  useEffect(()=>setLocal(String(value)),[value]);
+  const commit=()=>{ setEditing(false); onChange(parseInt(local) || 0); };
+  return <div style={{ background:T.surface,border:`1px solid ${T.border}`,borderRadius:10,padding:'15px 16px',minHeight:100 }}>
+    <Label>{label}</Label>
+    {editing && editable ? <input ref={ref} autoFocus type="number" min="0" value={local}
+      onChange={e=>{setLocal(e.target.value);onChange(parseInt(e.target.value)||0);}}
+      onBlur={commit} onKeyDown={e=>e.key==='Enter'&&commit()}
+      style={{marginTop:10,width:'100%',background:'transparent',border:0,borderBottom:`1px solid ${T.accent}`,outline:0,color:T.text,fontSize:28,fontWeight:900}}/>
+      : <div onClick={()=>{if(editable){setEditing(true);setTimeout(()=>ref.current?.select(),30)}}}
+        style={{marginTop:10,fontSize:28,fontWeight:900,color:T.text,cursor:editable?'text':'default'}}>{value}</div>}
+  </div>;
 }
 
-export default function TabVisaoGeral({ kpis, vendas, readOnly, viewLabel, saveDay }) {
-  const normalizedKpis = kpis.map(normalizeKpi);
-  const todayStr = today();
-  const [selectedDate, setSelectedDate] = useState(todayStr);
+export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly, viewLabel, saveCampaignDay }) {
+  const rows = useMemo(()=>campaignKpis.map(normalize),[campaignKpis]);
+  const [campaign,setCampaign] = useState('Geral');
+  const [date,setDate] = useState(today());
+  const [current,setCurrent] = useState({ ...EMPTY });
+  const [saving,setSaving] = useState(false);
+  const [saveError,setSaveError] = useState('');
+  const [saved,setSaved] = useState(false);
+  const [showReport,setShowReport] = useState(false);
+  const [copied,setCopied] = useState(false);
 
-  const todayAgg = normalizedKpis.filter((k) => k.date === selectedDate).reduce(
-    (a, k) => ({ leadsNovos: a.leadsNovos + k.leadsNovos, abordagem: a.abordagem + k.abordagem, fup: a.fup + k.fup, emNegociacao: a.emNegociacao + k.emNegociacao, fechados: a.fechados + k.fechados }),
-    { leadsNovos: 0, abordagem: 0, fup: 0, emNegociacao: 0, fechados: 0 }
-  );
+  const isGeneral = campaign === 'Geral';
+  const editable = !readOnly && !isGeneral;
 
-  const [current, setCurrent] = useState(todayAgg);
-  useEffect(() => { setCurrent(todayAgg); }, [readOnly, viewLabel, selectedDate, JSON.stringify(todayAgg)]);
+  const dayRows = useMemo(()=>rows.filter(r => r.date === date && (isGeneral || r.campanha === campaign)),[rows,date,campaign,isGeneral]);
+  const dayAgg = useMemo(()=>sumRows(dayRows),[dayRows]);
 
-  const displayValues = readOnly ? todayAgg : current;
-  const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState(false);
-  const [saveError, setSaveError] = useState('');
-  const [chartPeriod, setChartPeriod] = useState('semanal');
-  const [linePeriod, setLinePeriod] = useState('semanal');
-  const now = new Date();
+  useEffect(()=>setCurrent(dayAgg),[date,campaign,readOnly,JSON.stringify(dayAgg)]);
+  const display = editable ? current : dayAgg;
 
-  const handleChange = (k, v) => setCurrent((p) => Object.assign({}, p, { [k]: v }));
-  const handleSave = async () => {
-    setSaving(true);
-    setSaveError('');
-    const result = await saveDay(current, selectedDate);
+  const filterSales = (from,to) => vendas.filter(v => {
+    const d = String(v.data_venda || v.dataVenda || '').slice(0,10);
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    return isGeneral || String(v.campanha || '') === campaign;
+  });
+
+  const salesDay = filterSales(date,date);
+  const revenueDay = salesDay.reduce((s,v)=>s+Number(v.valor||0),0);
+  const ticketDay = salesDay.length ? revenueDay / salesDay.length : 0;
+
+  const accumulatedRows = rows.filter(r => r.date <= date && (isGeneral || r.campanha === campaign));
+  const accumulated = sumRows(accumulatedRows);
+  const accumulatedSales = filterSales('',date);
+  const accumulatedRevenue = accumulatedSales.reduce((s,v)=>s+Number(v.valor||0),0);
+
+  const y = new Date(date+'T12:00:00');
+  y.setDate(y.getDate()-1);
+  const yesterday = y.toISOString().slice(0,10);
+  const yesterdayAgg = sumRows(rows.filter(r => r.date === yesterday && (isGeneral || r.campanha === campaign)));
+
+  const save = async () => {
+    if (!editable) return;
+    setSaving(true); setSaveError(''); setSaved(false);
+    const result = await saveCampaignDay(current,date,campaign);
     setSaving(false);
-    if (result?.error) {
-      setSaveError(result.error.message || 'Não foi possível salvar os KPIs.');
-      return;
-    }
-    setToast(true);
-    setTimeout(() => setToast(false), 2500);
+    if (result?.error) { setSaveError(result.error.message || 'Não foi possível salvar.'); return; }
+    setSaved(true); setTimeout(()=>setSaved(false),2000);
   };
 
-  const aggregate = (rows) => rows.reduce(
-    (a, k) => ({ leadsNovos: a.leadsNovos + k.leadsNovos, abordagem: a.abordagem + k.abordagem, fup: a.fup + k.fup, emNegociacao: a.emNegociacao + k.emNegociacao, fechados: a.fechados + k.fechados }),
-    { leadsNovos: 0, abordagem: 0, fup: 0, emNegociacao: 0, fechados: 0 }
-  );
+  const report = useMemo(()=>{
+    const now=new Date();
+    const hh=String(now.getHours()).padStart(2,'0');
+    const mm=String(now.getMinutes()).padStart(2,'0');
+    const title=campaign.toUpperCase();
+    return `📊 VOLUMETRIA DE LEADS – ${title}
 
-  const selectedMonthStart = selectedDate.slice(0, 7) + '-01';
-  const monthAccumulated = aggregate(normalizedKpis.filter((k) => k.date >= selectedMonthStart && k.date <= selectedDate));
+🕣 Horário da atualização: ${hh}:${mm}
 
-  const mStart = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
-  const fatMes = vendas.filter((v) => v.data_venda >= mStart && v.data_venda <= todayStr).reduce((s, v) => s + (parseFloat(v.valor) || 0), 0);
-  const totalVendasMes = vendas.filter((v) => v.data_venda >= mStart && v.data_venda <= todayStr).length;
-  const ticketMedio = totalVendasMes > 0 ? fatMes / totalVendasMes : 0;
+📅 Ontem – ${formatShort(yesterday)}
+• ${campaign}: ${yesterdayAgg.leadsRecebidos} leads
 
-  const buildChart = (period) => {
-    if (period === 'semanal') {
-      const sw = startOfWeek(now), ew = endOfWeek(now);
-      return daysInRange(sw, ew).map((d) => Object.assign({ name: formatDateBR(d).slice(0, 5) }, aggregate(normalizedKpis.filter((x) => x.date === d))));
-    }
-    return weeksOfMonth(now.getFullYear(), now.getMonth()).map((w, i) =>
-      Object.assign({ name: 'Sem ' + (i + 1) }, aggregate(normalizedKpis.filter((k) => k.date >= w.start && k.date <= w.end)))
-    );
-  };
+📅 Hoje – ${formatShort(date)} (até agora)
+• ${campaign}: ${display.leadsRecebidos} leads
 
-  const barData = buildChart(chartPeriod);
-  const lineData = buildChart(linePeriod);
-  const mKpis = normalizedKpis.filter((k) => k.date >= mStart && k.date <= todayStr);
-  const pieAgg = aggregate(mKpis);
-  const pieTotal = Object.values(pieAgg).reduce((s, v) => s + v, 0);
-  const pieData = Object.entries(pieAgg).map(([k, v]) => ({ name: KPI_LABELS[k], value: v, color: T.kpi[k], pct: pieTotal > 0 ? ((v / pieTotal) * 100).toFixed(1) : '0.0' }));
-  const isToday = selectedDate === todayStr;
+📈 Total acumulado da campanha: ${accumulated.leadsRecebidos}
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
-      {readOnly && <div style={{ color: T.accent, fontSize: 12, fontWeight: 600 }}>Visualizando: {viewLabel} · somente leitura</div>}
+————————————————————————————————
 
-      <Section title={'KPIs · ' + formatDateBR(selectedDate)} action={
-        !readOnly ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Label>Data:</Label>
-            <input type="date" value={selectedDate} max={todayStr} onChange={(e) => setSelectedDate(e.target.value)}
-              style={{ background: T.bg, border: '1px solid ' + T.border, borderRadius: 6, color: T.text, fontSize: 13, padding: '5px 8px', outline: 'none', minHeight: 34, colorScheme: 'dark', WebkitAppearance: 'none' }} />
-            {!isToday && <button onClick={() => setSelectedDate(todayStr)} style={{ background: 'transparent', border: '1px solid ' + T.border, borderRadius: 6, color: T.textSec, fontSize: 12, padding: '5px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>Hoje</button>}
-          </div>
-        ) : null
-      }>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          {Object.keys(KPI_LABELS).map((k) => <KpiCard key={k} kpiKey={k} value={displayValues[k]} onChange={handleChange} readOnly={readOnly} />)}
+🎯 PERFORMANCE COMERCIAL – ${title}
+
+📅 Hoje – ${formatShort(date)}
+
+• Leads recebidos: ${display.leadsRecebidos}
+• Leads contatados: ${display.leadsContatados}
+• Aguardando resposta: ${display.aguardandoResposta}
+• Em conversa: ${display.emConversa}
+• Reunião/agendamento: ${display.reuniaoAgendamento}
+• Proposta/oferta enviada: ${display.propostaEnviada}
+• Compras realizadas: ${salesDay.length}
+• Sem interesse: ${display.semInteresse}
+• Número cadastrado errado: ${display.numeroErrado}
+• Número de teste: ${display.numeroTeste}
+• Sem contato realizado: ${display.semContato}
+
+💰 Resultado
+• Vendas: ${salesDay.length}
+• Faturamento: ${brl(revenueDay)}`;
+  },[campaign,date,display,yesterday,yesterdayAgg.leadsRecebidos,accumulated.leadsRecebidos,salesDay.length,revenueDay]);
+
+  const copy=async()=>{try{await navigator.clipboard.writeText(report);setCopied(true);setTimeout(()=>setCopied(false),1600);}catch{}};
+
+  const month = date.slice(0,7);
+  const chartRows = Array.from({length:new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),0).getDate()},(_,i)=>{
+    const d=`${month}-${String(i+1).padStart(2,'0')}`;
+    const a=sumRows(rows.filter(r=>r.date===d&&(isGeneral||r.campanha===campaign)));
+    const s=vendas.filter(v=>String(v.data_venda||v.dataVenda||'').slice(0,10)===d&&(isGeneral||String(v.campanha||'')===campaign)).length;
+    return {name:String(i+1).padStart(2,'0'),recebidos:a.leadsRecebidos,contatados:a.leadsContatados,reunioes:a.reuniaoAgendamento,vendas:s};
+  });
+
+  return <div style={{display:'flex',flexDirection:'column',gap:24}}>
+    {readOnly && <div style={{color:T.accent,fontSize:12,fontWeight:700}}>Visualizando: {viewLabel} · somente leitura</div>}
+
+    <Card>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:12,alignItems:'end'}}>
+        <div><Label>Campanha</Label><select value={campaign} onChange={e=>setCampaign(e.target.value)}
+          style={{width:'100%',marginTop:6,background:T.bg,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,padding:'10px 11px'}}>
+          <option>Geral</option>{CAMPAIGNS.map(c=><option key={c}>{c}</option>)}
+        </select></div>
+        <div><Label>Data</Label><input type="date" value={date} max={today()} onChange={e=>setDate(e.target.value)}
+          style={{width:'100%',marginTop:6,background:T.bg,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,padding:'9px 11px',colorScheme:'dark'}}/></div>
+        <div style={{fontSize:12,color:T.textMuted,lineHeight:1.5}}>
+          {isGeneral ? 'Geral soma automaticamente todas as campanhas.' : editable ? 'Clique em qualquer KPI para editar.' : 'Visualização consolidada.'}
         </div>
-        {!readOnly && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
-            <Btn onClick={handleSave} disabled={saving}>{saving ? 'Salvando...' : isToday ? 'Salvar dia' : 'Salvar ' + formatDateBR(selectedDate)}</Btn>
-            {toast && <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: T.success, fontSize: 12, fontWeight: 600 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: T.success }} />KPIs salvos</div>}
-          </div>
-        )}
-        {saveError && !readOnly && (
-          <div style={{ marginTop: 10, padding: '10px 12px', border: '1px solid ' + T.danger, borderRadius: 8, color: T.danger, fontSize: 12, fontWeight: 700 }}>
-            KPIs NÃO foram salvos: {saveError}
-          </div>
-        )}
-      </Section>
+      </div>
+    </Card>
 
-      <Section title={'Acumulado do mês · ' + MONTH_NAMES[Number(selectedDate.slice(5, 7)) - 1] + (viewLabel === 'Consolidado da equipe' ? ' · soma da equipe' : '')}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          {Object.keys(KPI_LABELS).map((k) => (
-            <div key={k} style={{ background: T.surface, border: '1px solid ' + T.border, borderTop: '2px solid ' + T.kpi[k], borderRadius: 10, padding: '16px 18px', flex: 1, minWidth: 140 }}>
-              <Label>{KPI_LABELS[k]}</Label>
-              <div style={{ fontSize: 28, fontWeight: 800, color: T.text, marginTop: 8 }}>{monthAccumulated[k]}</div>
-              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>até {formatDateBR(selectedDate)}</div>
-            </div>
-          ))}
-        </div>
-      </Section>
+    <div>
+      <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>KPIs operacionais · {campaign}</div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:10}}>
+        {Object.entries(KPI_LABELS).map(([k,label])=><KpiCard key={k} label={label} value={display[k]} editable={editable} onChange={v=>setCurrent(p=>({...p,[k]:v}))}/>)}
+      </div>
+      {editable && <div style={{display:'flex',gap:10,alignItems:'center',marginTop:12,flexWrap:'wrap'}}>
+        <button onClick={save} disabled={saving} style={{background:T.accent,color:'#08111B',border:0,borderRadius:8,padding:'10px 16px',fontWeight:900,cursor:'pointer',opacity:saving?.6:1}}>{saving?'Salvando...':'Salvar KPIs do dia'}</button>
+        {saved&&<span style={{fontSize:12,color:T.success,fontWeight:800}}>KPIs salvos</span>}
+        {saveError&&<span style={{fontSize:12,color:T.danger,fontWeight:800}}>{saveError}</span>}
+      </div>}
+    </div>
 
-      <Section title="Faturamento">
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <MetricTile label="Faturamento do mes" value={formatBRL(fatMes)} sub={MONTH_NAMES[now.getMonth()] + ' ' + now.getFullYear() + ' · soma do CRM'} color={T.success} />
-          <MetricTile label="Total de vendas" value={totalVendasMes} sub="registros no CRM este mes" color={T.kpi.leadsNovos} />
-          <MetricTile label="Ticket medio" value={formatBRL(ticketMedio)} sub="media por venda este mes" color={T.kpi.abordagem} />
-        </div>
-      </Section>
-
-      <Section title="Volume por periodo" action={<Toggle options={[{ value: 'semanal', label: 'Semana' }, { value: 'mensal', label: 'Mes' }]} value={chartPeriod} onChange={setChartPeriod} />}>
-        <Card style={{ padding: '20px 16px 8px' }}>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={barData} barGap={3} barCategoryGap="30%">
-              <CartesianGrid stroke={T.border} strokeDasharray="0" vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: T.textMuted, fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: T.textMuted, fontSize: 11 }} axisLine={false} tickLine={false} width={28} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,.03)' }} />
-              <Legend wrapperStyle={{ paddingTop: 16, fontSize: 11, color: T.textSec }} iconType="circle" iconSize={6} />
-              {Object.entries(KPI_LABELS).map(([k, label]) => <Bar key={k} dataKey={k} name={label} fill={T.kpi[k]} radius={[3, 3, 0, 0]} maxBarSize={18} />)}
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-      </Section>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 16 }}>
-        <Section title={'Distribuicao · ' + MONTH_NAMES[now.getMonth()]}>
-          <Card style={{ padding: '16px 8px' }}>
-            <ResponsiveContainer width="100%" height={270}>
-              <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value">
-                  {pieData.map((e, i) => <Cell key={i} fill={e.color} />)}
-                </Pie>
-                <Tooltip content={({ active, payload }) => {
-                  if (!active || !payload || !payload[0]) return null;
-                  const d = payload[0].payload;
-                  return <div style={{ background: T.overlay, border: '1px solid ' + T.borderMid, borderRadius: 8, padding: '8px 12px' }}><div style={{ color: d.color, fontWeight: 700, fontSize: 12 }}>{d.name}</div><div style={{ color: T.textSec, fontSize: 12 }}>{d.value} · {d.pct}%</div></div>;
-                }} />
-                <Legend wrapperStyle={{ fontSize: 11, color: T.textSec }} iconType="circle" iconSize={6} />
-              </PieChart>
-            </ResponsiveContainer>
-          </Card>
-        </Section>
-
-        <Section title="Evolucao de performance" action={<Toggle options={[{ value: 'semanal', label: 'Semana' }, { value: 'mensal', label: 'Mes' }]} value={linePeriod} onChange={setLinePeriod} />}>
-          <Card style={{ padding: '20px 16px 8px' }}>
-            <ResponsiveContainer width="100%" height={270}>
-              <LineChart data={lineData}>
-                <CartesianGrid stroke={T.border} strokeDasharray="0" vertical={false} />
-                <XAxis dataKey="name" tick={{ fill: T.textMuted, fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: T.textMuted, fontSize: 11 }} axisLine={false} tickLine={false} width={28} />
-                <Tooltip content={<ChartTooltip />} />
-                <Legend wrapperStyle={{ paddingTop: 16, fontSize: 11, color: T.textSec }} iconType="circle" iconSize={6} />
-                {Object.entries(KPI_LABELS).map(([k, label]) => <Line key={k} type="monotone" dataKey={k} name={label} stroke={T.kpi[k]} strokeWidth={1.5} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />)}
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
-        </Section>
+    <div>
+      <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>Resultado automático · aba Vendas</div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10}}>
+        <Card><Label>Compras / vendas hoje</Label><div style={{fontSize:28,fontWeight:900,marginTop:9}}>{salesDay.length}</div></Card>
+        <Card><Label>Faturamento hoje</Label><div style={{fontSize:25,fontWeight:900,marginTop:9,color:T.success}}>{brl(revenueDay)}</div></Card>
+        <Card><Label>Ticket médio hoje</Label><div style={{fontSize:25,fontWeight:900,marginTop:9}}>{brl(ticketDay)}</div></Card>
+        <Card><Label>Faturamento acumulado</Label><div style={{fontSize:25,fontWeight:900,marginTop:9,color:T.accent}}>{brl(accumulatedRevenue)}</div></Card>
       </div>
     </div>
-  );
+
+    <div>
+      <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>Acumulado · {campaign}</div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:10}}>
+        {['leadsRecebidos','leadsContatados','reuniaoAgendamento','propostaEnviada'].map(k=><Card key={k} style={{padding:15}}><Label>{KPI_LABELS[k]}</Label><div style={{fontSize:26,fontWeight:900,marginTop:8}}>{accumulated[k]}</div></Card>)}
+        <Card style={{padding:15}}><Label>Vendas</Label><div style={{fontSize:26,fontWeight:900,marginTop:8}}>{accumulatedSales.length}</div></Card>
+      </div>
+    </div>
+
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:12}}>
+        <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec}}>Relatório diário de KPIs</div>
+        <button onClick={()=>setShowReport(v=>!v)} style={{background:T.accent,color:'#08111B',border:0,borderRadius:8,padding:'9px 13px',fontWeight:900,cursor:'pointer'}}>{showReport?'Ocultar relatório':'Gerar relatório'}</button>
+      </div>
+      {showReport&&<Card>
+        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:10}}><button onClick={copy} style={{background:copied?T.success:T.accent,color:'#08111B',border:0,borderRadius:8,padding:'8px 12px',fontWeight:900,cursor:'pointer'}}>{copied?'Copiado!':'Copiar para WhatsApp'}</button></div>
+        <pre style={{whiteSpace:'pre-wrap',fontFamily:'inherit',fontSize:12,lineHeight:1.55,color:T.textSec,background:T.bg,border:`1px solid ${T.border}`,borderRadius:10,padding:14,margin:0}}>{report}</pre>
+      </Card>}
+    </div>
+
+    <div>
+      <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>Evolução do mês · {campaign}</div>
+      <Card style={{padding:'18px 10px 8px'}}>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={chartRows}>
+            <CartesianGrid stroke={T.border} vertical={false}/>
+            <XAxis dataKey="name" tick={{fill:T.textMuted,fontSize:10}} axisLine={false} tickLine={false}/>
+            <YAxis tick={{fill:T.textMuted,fontSize:10}} axisLine={false} tickLine={false} width={28}/>
+            <Tooltip contentStyle={{background:T.overlay,border:`1px solid ${T.borderMid}`,borderRadius:8}}/>
+            <Legend wrapperStyle={{fontSize:11}}/>
+            <Bar dataKey="recebidos" name="Leads recebidos" fill={T.kpi.leadsNovos} radius={[3,3,0,0]}/>
+            <Bar dataKey="contatados" name="Contatados" fill={T.kpi.abordagem} radius={[3,3,0,0]}/>
+            <Bar dataKey="reunioes" name="Reuniões" fill={T.kpi.fup} radius={[3,3,0,0]}/>
+            <Bar dataKey="vendas" name="Vendas" fill={T.success} radius={[3,3,0,0]}/>
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+    </div>
+  </div>;
 }
