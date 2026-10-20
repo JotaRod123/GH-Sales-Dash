@@ -29,7 +29,7 @@ export default function Dashboard({ profile, accessToken, isAdmin, isEspectador,
   const [tab, setTab] = useState('visao');
   const [viewMode, setViewMode] = useState(isEspectador ? 'team' : 'mine');
 
-  const ownKpis = useKpis(profile.id);
+  const ownKpis = useKpis(profile.id, accessToken);
   const ownKpisProsp = useKpisProspeccao(profile.id);
   const ownProspects = useProspects(profile.id);
   const ownVendas = useVendas(profile.id, accessToken);
