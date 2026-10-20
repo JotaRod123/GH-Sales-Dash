@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import TabRelatorios from './TabRelatorios';
+import DailyCampaignReportMock from './DailyCampaignReportMock';
 import { T } from '../lib/theme';
 
 const brl = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -71,6 +72,7 @@ export default function TabRelatoriosComTexto(props) {
   };
 
   return <div style={{display:'flex',flexDirection:'column',gap:18}}>
+    <DailyCampaignReportMock vendas={vendas} />
     <div style={{display:'flex',justifyContent:'flex-end'}}>
       <button
         onClick={() => setShowWhatsAppReport((v) => !v)}
