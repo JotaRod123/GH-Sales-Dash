@@ -1,3 +1,4 @@
+import { CAMPAIGNS } from '../lib/campaigns';
 import { useState } from 'react';
 import { T } from '../lib/theme';
 
@@ -28,6 +29,7 @@ const validateVenda = (v) => {
   if (!v.dataVenda) e.dataVenda = 'Obrigatorio';
   if (!v.origem) e.origem = 'Obrigatorio';
   if (!v.produto || v.produto === 'Selecione') e.produto = 'Obrigatorio';
+  if (!v.campanha || v.campanha === 'Selecione') e.campanha = 'Obrigatorio';
   if (v.produto === 'Outros' && !v.produtoOutros.trim()) e.produtoOutros = 'Obrigatorio';
   if (!v.valor || isNaN(parseFloat(v.valor))) e.valor = 'Valor numerico obrigatorio';
   return e;
@@ -42,13 +44,14 @@ const toFormShape = (row) => {
     dataVenda: row.data_venda,
     origem: row.origem,
     produto: isProdutoLista ? row.produto : 'Outros',
+    campanha: row.campanha || '',
     produtoOutros: isProdutoLista ? '' : row.produto,
     valor: String(row.valor),
     observacao: row.observacao || '',
   };
 };
 
-const EMPTY = { nome: '', telefone: '', dataVenda: today(), origem: '', produto: '', produtoOutros: '', valor: '', observacao: '' };
+const EMPTY = { nome: '', telefone: '', dataVenda: today(), origem: '', produto: '', campanha: '', produtoOutros: '', valor: '', observacao: '' };
 
 function Card({ children, style = {} }) {
   return <div style={Object.assign({ background: T.surface, border: '1px solid ' + T.border, borderRadius: 10, padding: '20px 24px' }, style)}>{children}</div>;
@@ -160,6 +163,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
   const [fFrom, setFFrom] = useState('');
   const [fTo, setFTo] = useState('');
   const [fProduto, setFProduto] = useState('');
+  const [fCampanha, setFCampanha] = useState('');
   const [fOrigem, setFOrigem] = useState('');
   const [fValorMin, setFValorMin] = useState('');
   const [saving, setSaving] = useState(false);
@@ -203,6 +207,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
     if (fFrom && v.dataVenda < fFrom) return false;
     if (fTo && v.dataVenda > fTo) return false;
     if (fProduto && fProduto !== 'Todos' && v.produto !== fProduto && !(fProduto === 'Outros' && !PRODUTOS.filter(p => p !== 'Outros').includes(v.produto))) return false;
+    if (fCampanha && fCampanha !== 'Todas' && v.campanha !== fCampanha) return false;
     if (fOrigem && fOrigem !== 'Todas' && v.origem !== fOrigem) return false;
     if (fValorMin && parseFloat(v.valor) < parseFloat(fValorMin)) return false;
     return true;
@@ -227,6 +232,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
               <Input label="Telefone (opcional)" value={form.telefone} onChange={(v) => sf('telefone', formatPhone(v))} placeholder="(11) 99999-9999" />
               <Input label="Data da venda" type="date" value={form.dataVenda} onChange={(v) => sf('dataVenda', v)} error={errors.dataVenda} />
               <Select label="Origem" value={form.origem || 'Selecione'} onChange={(v) => sf('origem', v)} options={['Selecione', ...ORIGENS]} error={errors.origem} />
+              <Select label="Campanha" value={form.campanha || 'Selecione'} onChange={(v) => sf('campanha', v)} options={['Selecione', ...CAMPAIGNS]} error={errors.campanha} />
               <Select label="Produto" value={form.produto || 'Selecione'} onChange={(v) => sf('produto', v)} options={['Selecione', ...PRODUTOS]} error={errors.produto} />
               {form.produto === 'Outros' && <Input label="Qual produto?" value={form.produtoOutros} onChange={(v) => sf('produtoOutros', v)} error={errors.produtoOutros} placeholder="Nome do produto" />}
               <Input label="Valor (R$)" type="number" value={form.valor} onChange={(v) => sf('valor', v)} error={errors.valor} placeholder="0.00" />
@@ -247,6 +253,13 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
             <Input label="Data inicial" type="date" value={fFrom} onChange={setFFrom} style={{ minWidth: 155 }} />
             <Input label="Data final" type="date" value={fTo} onChange={setFTo} style={{ minWidth: 155 }} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 175 }}>
+              <Label>Campanha</Label>
+              <select value={fCampanha} onChange={(e) => setFCampanha(e.target.value)} style={{ background: T.bg, border: '1px solid ' + T.border, borderRadius: 6, color: T.text, fontSize: 13, padding: '8px 11px', outline: 'none', cursor: 'pointer' }}>
+                <option value="">Todas</option>
+                {CAMPAIGNS.map((o) => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 175 }}>
               <Label>Produto</Label>
               <select value={fProduto} onChange={(e) => setFProduto(e.target.value)} style={{ background: T.bg, border: '1px solid ' + T.border, borderRadius: 6, color: T.text, fontSize: 13, padding: '8px 11px', outline: 'none', cursor: 'pointer' }}>
                 <option value="">Todos</option>
@@ -261,7 +274,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
               </select>
             </div>
             <Input label="Valor minimo" type="number" value={fValorMin} onChange={setFValorMin} placeholder="R$ 0" style={{ minWidth: 130 }} />
-            <button onClick={() => { setFFrom(''); setFTo(''); setFProduto(''); setFOrigem(''); setFValorMin(''); }} style={{ background: 'transparent', border: '1px solid ' + T.border, borderRadius: 6, color: T.textSec, fontSize: 12, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 1 }}>Limpar</button>
+            <button onClick={() => { setFFrom(''); setFTo(''); setFProduto(''); setFCampanha(''); setFOrigem(''); setFValorMin(''); }} style={{ background: 'transparent', border: '1px solid ' + T.border, borderRadius: 6, color: T.textSec, fontSize: 12, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 1 }}>Limpar</button>
           </div>
         </Card>
       </div>
@@ -277,7 +290,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead><tr><TH>Nome</TH><TH>Telefone</TH><TH>Data</TH><TH>Origem</TH><TH>Produto</TH><TH>Valor</TH><TH>Observacoes</TH>{!readOnly && <TH></TH>}</tr></thead>
+                <thead><tr><TH>Nome</TH><TH>Telefone</TH><TH>Data</TH><TH>Origem</TH><TH>Campanha</TH><TH>Produto</TH><TH>Valor</TH><TH>Observacoes</TH>{!readOnly && <TH></TH>}</tr></thead>
                 <tbody>
                   {filtered.map((v, i) => (
                     <tr key={v.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid ' + T.border : 'none' }}>
@@ -285,6 +298,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
                       <td style={{ padding: '11px 14px', color: T.textSec }}>{v.telefone || <span style={{ color: T.textMuted, fontStyle: 'italic' }}>-</span>}</td>
                       <td style={{ padding: '11px 14px', color: T.textSec, whiteSpace: 'nowrap' }}>{formatDateBR(v.dataVenda)}</td>
                       <td style={{ padding: '11px 14px' }}><Pill origem={v.origem} /></td>
+                      <td style={{ padding: '11px 14px', color: T.accent, fontWeight: 700, whiteSpace: 'nowrap' }}>{v.campanha || '-'}</td>
                       <td style={{ padding: '11px 14px', color: T.text, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.produto === 'Outros' ? v.produtoOutros : v.produto}</td>
                       <td style={{ padding: '11px 14px', color: T.success, fontWeight: 600, whiteSpace: 'nowrap' }}>{formatBRL(v.valor)}</td>
                       <td style={{ padding: '11px 14px', maxWidth: 180 }}><ObsCell texto={v.observacao} /></td>
@@ -312,6 +326,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
             <Input label="Telefone (opcional)" value={editVenda.telefone} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { telefone: formatPhone(v) }))} />
             <Input label="Data da venda" type="date" value={editVenda.dataVenda} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { dataVenda: v }))} error={editErrors.dataVenda} />
             <Select label="Origem" value={editVenda.origem} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { origem: v }))} options={ORIGENS} error={editErrors.origem} />
+            <Select label="Campanha" value={editVenda.campanha || 'Selecione'} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { campanha: v }))} options={['Selecione', ...CAMPAIGNS]} error={editErrors.campanha} />
             <Select label="Produto" value={editVenda.produto} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { produto: v }))} options={PRODUTOS} error={editErrors.produto} />
             {editVenda.produto === 'Outros' && <Input label="Qual produto?" value={editVenda.produtoOutros} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { produtoOutros: v }))} error={editErrors.produtoOutros} />}
             <Input label="Valor (R$)" type="number" value={editVenda.valor} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { valor: v }))} error={editErrors.valor} />
