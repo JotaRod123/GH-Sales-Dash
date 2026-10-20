@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { CAMPAIGNS } from '../lib/campaigns';
 import { T } from '../lib/theme';
 
 const inputStyle = { background: T.bg, border: `1px solid ${T.border}`, color: T.text, borderRadius: 6, padding: '7px 8px', fontFamily: 'inherit', fontSize: 12 };
@@ -47,10 +48,14 @@ export default function TabCalls({ calls, readOnly, addCall, updateCall, deleteC
     setForm({ lead_nome: '', data_hora: '', tipo: 'diagnostico', produto: 'Health Club', status: 'agendada', resultado: '', proximo_passo: '' });
   };
 
-  const getDraft = (c) => ({
-    valor_venda: drafts[c.id]?.valor_venda ?? String(c.valor_venda || ''),
-    origem_venda: drafts[c.id]?.origem_venda ?? c.origem_venda ?? 'Prospeccao',
-  });
+  const getDraft = (c) => {
+    const linkedVenda = vendas.find(v => v.call_id === c.id);
+    return {
+      valor_venda: drafts[c.id]?.valor_venda ?? String(c.valor_venda || ''),
+      origem_venda: drafts[c.id]?.origem_venda ?? c.origem_venda ?? 'Prospeccao',
+      campanha_venda: drafts[c.id]?.campanha_venda ?? linkedVenda?.campanha ?? '',
+    };
+  };
 
   const setDraft = (id, field, value) => {
     setDrafts(prev => ({ ...prev, [id]: { ...(prev[id] || {}), [field]: value } }));
@@ -64,6 +69,11 @@ export default function TabCalls({ calls, readOnly, addCall, updateCall, deleteC
     if (resultado === 'comprou') {
       const valor = Number(draft.valor_venda || 0);
       const origem = draft.origem_venda || 'Prospeccao';
+      const campanha = draft.campanha_venda || '';
+      if (!campanha) {
+        setRowError(prev => ({ ...prev, [c.id]: 'Selecione a campanha antes de marcar Comprou.' }));
+        return;
+      }
       if (!valor || valor <= 0) {
         setRowError(prev => ({ ...prev, [c.id]: 'Preencha o valor da venda antes de marcar Comprou.' }));
         return;
@@ -82,6 +92,7 @@ export default function TabCalls({ calls, readOnly, addCall, updateCall, deleteC
         dataVenda: new Date(c.data_hora).toISOString().slice(0,10),
         origem,
         produto: c.produto || 'Outros',
+        campanha,
         valor,
         observacao: 'Venda gerada automaticamente pela call.',
         prospectId: c.prospect_id || null,
@@ -132,8 +143,8 @@ export default function TabCalls({ calls, readOnly, addCall, updateCall, deleteC
     </div>}
 
     <div style={{ ...cardStyle, overflowX:'auto' }}>
-      <table style={{width:'100%',borderCollapse:'collapse',minWidth:1220}}>
-        <thead><tr>{['Lead','Data','Tipo','Produto','Status','Resultado da call','Origem da venda','Valor da venda','Próximo passo',''].map(h=><th key={h} style={{textAlign:'left',fontSize:11,color:T.textSec,padding:'10px 8px',borderBottom:`1px solid ${T.border}`}}>{h}</th>)}</tr></thead>
+      <table style={{width:'100%',borderCollapse:'collapse',minWidth:1360}}>
+        <thead><tr>{['Lead','Data','Tipo','Produto','Status','Resultado da call','Campanha da venda','Origem da venda','Valor da venda','Próximo passo',''].map(h=><th key={h} style={{textAlign:'left',fontSize:11,color:T.textSec,padding:'10px 8px',borderBottom:`1px solid ${T.border}`}}>{h}</th>)}</tr></thead>
         <tbody>
         {calls.map(c=>{
           const draft=getDraft(c);
@@ -151,6 +162,7 @@ export default function TabCalls({ calls, readOnly, addCall, updateCall, deleteC
               </select>}
               {rowError[c.id] && <div style={{color:T.danger,fontSize:10,marginTop:5,maxWidth:180}}>{rowError[c.id]}</div>}
             </td>
+            <td style={{padding:8}}>{readOnly ? (vendas.find(v=>v.call_id===c.id)?.campanha||'-') : <select style={inputStyle} value={draft.campanha_venda} onChange={e=>setDraft(c.id,'campanha_venda',e.target.value)}><option value="">Selecione</option>{CAMPAIGNS.map(o=><option key={o}>{o}</option>)}</select>}</td>
             <td style={{padding:8}}>{readOnly ? (c.origem_venda||'-') : <select style={inputStyle} value={draft.origem_venda} onChange={e=>setDraft(c.id,'origem_venda',e.target.value)}>{ORIGENS.map(o=><option key={o}>{o}</option>)}</select>}</td>
             <td style={{padding:8}}>{readOnly ? (c.valor_venda ? Number(c.valor_venda).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '-') : <input style={{...inputStyle,width:115}} type="number" min="0" step="0.01" value={draft.valor_venda} onChange={e=>setDraft(c.id,'valor_venda',e.target.value)} placeholder="R$ 0"/>}</td>
             <td style={{padding:8}}>{c.proximo_passo||'-'}</td>
