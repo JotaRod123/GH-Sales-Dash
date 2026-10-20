@@ -73,7 +73,7 @@ function KpiCard({ label, value, editable, onChange }) {
 
 export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly, viewLabel, saveCampaignDay }) {
   const rows = useMemo(()=>campaignKpis.map(normalize),[campaignKpis]);
-  const [campaign,setCampaign] = useState('MonsterDay');
+  const [campaign,setCampaign] = useState('Geral');
   const [date,setDate] = useState(today());
   const [current,setCurrent] = useState({ ...EMPTY });
   const [saving,setSaving] = useState(false);
