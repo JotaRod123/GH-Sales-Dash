@@ -95,7 +95,7 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
     const d = String(v.data_venda || v.dataVenda || '').slice(0,10);
     if (from && d < from) return false;
     if (to && d > to) return false;
-    return isGeneral || String(v.campanha || '') === campaign;
+    return isGeneral ? CAMPAIGNS.includes(String(v.campanha || '')) : String(v.campanha || '') === campaign;
   });
 
   const salesDay = filterSales(date,date);
@@ -167,7 +167,7 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
   const chartRows = Array.from({length:new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),0).getDate()},(_,i)=>{
     const d=`${month}-${String(i+1).padStart(2,'0')}`;
     const a=sumRows(rows.filter(r=>r.date===d&&(isGeneral||r.campanha===campaign)));
-    const s=vendas.filter(v=>String(v.data_venda||v.dataVenda||'').slice(0,10)===d&&(isGeneral||String(v.campanha||'')===campaign)).length;
+    const s=vendas.filter(v=>String(v.data_venda||v.dataVenda||'').slice(0,10)===d&&(isGeneral?CAMPAIGNS.includes(String(v.campanha||'')):String(v.campanha||'')===campaign)).length;
     return {name:String(i+1).padStart(2,'0'),recebidos:a.leadsRecebidos,contatados:a.leadsContatados,reunioes:a.reuniaoAgendamento,vendas:s};
   });
 
