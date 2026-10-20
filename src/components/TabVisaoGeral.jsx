@@ -105,7 +105,12 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
   const accumulatedRows = rows.filter(r => r.date <= date && (isGeneral || r.campanha === campaign));
   const accumulated = sumRows(accumulatedRows);
   const accumulatedSales = filterSales('',date);
-  const accumulatedRevenue = accumulatedSales.reduce((s,v)=>s+Number(v.valor||0),0);
+
+  const monthStart = date.slice(0,7) + '-01';
+  const monthSales = filterSales(monthStart, date);
+  const monthRevenue = monthSales.reduce((s,v)=>s+Number(v.valor||0),0);
+  const monthTicket = monthSales.length ? monthRevenue / monthSales.length : 0;
+  const monthLabel = new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
 
   const y = new Date(date+'T12:00:00');
   y.setDate(y.getDate()-1);
@@ -201,20 +206,28 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
     </div>
 
     <div>
-      <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>Resultado automático · aba Vendas</div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10}}>
-        <Card><Label>Compras / vendas hoje</Label><div style={{fontSize:28,fontWeight:900,marginTop:9}}>{salesDay.length}</div></Card>
-        <Card><Label>Faturamento hoje</Label><div style={{fontSize:25,fontWeight:900,marginTop:9,color:T.success}}>{brl(revenueDay)}</div></Card>
-        <Card><Label>Ticket médio hoje</Label><div style={{fontSize:25,fontWeight:900,marginTop:9}}>{brl(ticketDay)}</div></Card>
-        <Card><Label>Faturamento acumulado</Label><div style={{fontSize:25,fontWeight:900,marginTop:9,color:T.accent}}>{brl(accumulatedRevenue)}</div></Card>
-      </div>
-    </div>
-
-    <div>
       <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>Acumulado · {campaign}</div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:10}}>
         {['leadsRecebidos','leadsContatados','reuniaoAgendamento','propostaEnviada'].map(k=><Card key={k} style={{padding:15}}><Label>{KPI_LABELS[k]}</Label><div style={{fontSize:26,fontWeight:900,marginTop:8}}>{accumulated[k]}</div></Card>)}
         <Card style={{padding:15}}><Label>Vendas</Label><div style={{fontSize:26,fontWeight:900,marginTop:8}}>{accumulatedSales.length}</div></Card>
+      </div>
+    </div>
+
+    <div>
+      <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>Faturamento do mês · {monthLabel}</div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:10}}>
+        <Card><Label>Faturamento do mês</Label><div style={{fontSize:25,fontWeight:900,marginTop:9,color:T.success}}>{brl(monthRevenue)}</div></Card>
+        <Card><Label>Vendas no mês</Label><div style={{fontSize:28,fontWeight:900,marginTop:9}}>{monthSales.length}</div></Card>
+        <Card><Label>Ticket médio</Label><div style={{fontSize:25,fontWeight:900,marginTop:9}}>{brl(monthTicket)}</div></Card>
+      </div>
+    </div>
+
+    <div>
+      <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>Resultado de hoje · aba Vendas</div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:10}}>
+        <Card><Label>Vendas hoje</Label><div style={{fontSize:28,fontWeight:900,marginTop:9}}>{salesDay.length}</div></Card>
+        <Card><Label>Faturamento hoje</Label><div style={{fontSize:25,fontWeight:900,marginTop:9,color:T.success}}>{brl(revenueDay)}</div></Card>
+        <Card><Label>Ticket médio hoje</Label><div style={{fontSize:25,fontWeight:900,marginTop:9}}>{brl(ticketDay)}</div></Card>
       </div>
     </div>
 
