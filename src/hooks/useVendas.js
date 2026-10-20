@@ -21,6 +21,7 @@ const normalizeVenda = (v) => {
     data_venda: v.data_venda || v.dataVenda,
     origem,
     produto: v.produto,
+    campanha: v.campanha || null,
     valor,
     observacao: v.observacao || '',
     prospect_id: v.prospect_id || v.prospectId || null,
