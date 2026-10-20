@@ -247,7 +247,7 @@ export default function TabVisaoGeral({ kpis, vendas, readOnly, viewLabel, saveD
         )}
       </Section>
 
-      <Section title={'Acumulado do mês · ' + MONTH_NAMES[Number(selectedDate.slice(5, 7)) - 1]}>
+      <Section title={'Acumulado do mês · ' + MONTH_NAMES[Number(selectedDate.slice(5, 7)) - 1] + (viewLabel === 'Consolidado da equipe' ? ' · soma da equipe' : '')}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           {Object.keys(KPI_LABELS).map((k) => (
             <div key={k} style={{ background: T.surface, border: '1px solid ' + T.border, borderTop: '2px solid ' + T.kpi[k], borderRadius: 10, padding: '16px 18px', flex: 1, minWidth: 140 }}>
