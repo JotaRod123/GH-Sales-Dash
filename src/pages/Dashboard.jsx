@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useKpis, useTeamKpis } from '../hooks/useKpis';
+import { useCampaignKpis, useTeamCampaignKpis } from '../hooks/useCampaignKpis';
 import { useKpisProspeccao, useTeamKpisProspeccao } from '../hooks/useKpisProspeccao';
 import { useProspects, useTeamProspects } from '../hooks/useProspects';
 import { useVendas, useTeamVendas } from '../hooks/useVendas';
@@ -30,6 +31,7 @@ export default function Dashboard({ profile, accessToken, isAdmin, isEspectador,
   const [viewMode, setViewMode] = useState(isEspectador ? 'team' : 'mine');
 
   const ownKpis = useKpis(profile.id, accessToken);
+  const ownCampaignKpis = useCampaignKpis(profile.id, accessToken);
   const ownKpisProsp = useKpisProspeccao(profile.id);
   const ownProspects = useProspects(profile.id);
   const ownVendas = useVendas(profile.id, accessToken);
@@ -37,6 +39,7 @@ export default function Dashboard({ profile, accessToken, isAdmin, isEspectador,
 
   const canSeeTeam = isAdmin || isEspectador;
   const teamKpisHook = useTeamKpis(canSeeTeam);
+  const teamCampaignKpisHook = useTeamCampaignKpis(canSeeTeam);
   const teamKpisProspHook = useTeamKpisProspeccao(canSeeTeam);
   const teamProspectsHook = useTeamProspects(canSeeTeam);
   const teamVendasHook = useTeamVendas(canSeeTeam);
@@ -56,14 +59,15 @@ export default function Dashboard({ profile, accessToken, isAdmin, isEspectador,
 
   const getDisplay = () => {
     if (viewMode === 'mine') {
-      return { kpis: ownKpis.kpis, kpisProsp: ownKpisProsp.kpis, prospects: ownProspects.prospects, vendas: ownVendas.vendas, readOnly: false, label: profile.nome };
+      return { kpis: ownKpis.kpis, campaignKpis: ownCampaignKpis.campaignKpis, kpisProsp: ownKpisProsp.kpis, prospects: ownProspects.prospects, vendas: ownVendas.vendas, readOnly: false, label: profile.nome };
     }
     if (viewMode === 'team') {
-      return { kpis: teamKpisHook.teamKpis, kpisProsp: teamKpisProspHook.teamKpis, prospects: teamProspectsHook.teamProspects, vendas: teamVendasHook.teamVendas, readOnly: true, label: 'Consolidado da equipe' };
+      return { kpis: teamKpisHook.teamKpis, campaignKpis: teamCampaignKpisHook.teamCampaignKpis, kpisProsp: teamKpisProspHook.teamKpis, prospects: teamProspectsHook.teamProspects, vendas: teamVendasHook.teamVendas, readOnly: true, label: 'Consolidado da equipe' };
     }
     const admin = teamKpisHook.admins.find((a) => a.id === viewMode);
     return {
       kpis: teamKpisHook.teamKpis.filter((k) => k.user_id === viewMode),
+      campaignKpis: teamCampaignKpisHook.teamCampaignKpis.filter((k) => k.user_id === viewMode),
       kpisProsp: teamKpisProspHook.teamKpis.filter((k) => k.user_id === viewMode),
       prospects: teamProspectsHook.teamProspects.filter((p) => p.user_id === viewMode),
       vendas: teamVendasHook.teamVendas.filter((v) => v.user_id === viewMode),
@@ -147,7 +151,7 @@ export default function Dashboard({ profile, accessToken, isAdmin, isEspectador,
             </div>
           </div>
 
-          {tab === 'visao' && <TabVisaoGeral kpis={display.kpis} vendas={display.vendas} readOnly={display.readOnly} viewLabel={display.label} saveDay={ownKpis.saveDay} />}
+          {tab === 'visao' && <TabVisaoGeral campaignKpis={display.campaignKpis || []} vendas={display.vendas} readOnly={display.readOnly} viewLabel={display.label} saveCampaignDay={ownCampaignKpis.saveDay} />}
           {tab === 'prospeccao' && <TabProspeccao kpisProsp={display.kpisProsp} prospects={display.prospects} readOnly={display.readOnly} viewLabel={display.label} saveDay={ownKpisProsp.saveDay} addProspect={ownProspects.addProspect} updateProspect={ownProspects.updateProspect} deleteProspect={ownProspects.deleteProspect} addVenda={ownVendas.addVenda} refetchVendas={ownVendas.refetch} addCall={salesOS.addCall} deleteCall={salesOS.deleteCall} />}
           {tab === 'pipeline' && <TabPipeline prospects={display.prospects} readOnly={display.readOnly} updateProspect={ownProspects.updateProspect} />}
           {tab === 'calls' && (ownModule ? <TabCalls calls={salesOS.calls} readOnly={false} addCall={salesOS.addCall} updateCall={salesOS.updateCall} deleteCall={salesOS.deleteCall} vendas={ownVendas.vendas} addVenda={ownVendas.addVenda} updateVenda={ownVendas.updateVenda} deleteVenda={ownVendas.deleteVenda} /> : teamNotice)}
