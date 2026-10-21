@@ -105,6 +105,17 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
   const accumulatedRows = rows.filter(r => r.date <= date && (isGeneral || r.campanha === campaign));
   const accumulated = sumRows(accumulatedRows);
   const accumulatedSales = filterSales('',date);
+  const funnelSales = isGeneral
+    ? vendas.filter(v => {
+        const d = String(v.data_venda || v.dataVenda || '').slice(0,10);
+        return d <= date && CAMPAIGNS.includes(String(v.campanha || ''));
+      })
+    : accumulatedSales;
+
+  const pct = (num, den) => den > 0 ? (num / den) * 100 : 0;
+  const conversionRate = pct(funnelSales.length, accumulated.leadsRecebidos);
+  const responseRate = pct(accumulated.emConversa, accumulated.leadsContatados);
+  const proposalCloseRate = pct(funnelSales.length, accumulated.propostaEnviada);
 
   const monthStart = date.slice(0,7) + '-01';
   const monthSales = filterSales(monthStart, date);
@@ -208,7 +219,7 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
     <div>
       <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>Acumulado · {campaign}</div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:10}}>
-        {['leadsRecebidos','leadsContatados','reuniaoAgendamento','propostaEnviada'].map(k=><Card key={k} style={{padding:15}}><Label>{KPI_LABELS[k]}</Label><div style={{fontSize:26,fontWeight:900,marginTop:8}}>{accumulated[k]}</div></Card>)}
+        {['leadsRecebidos','leadsContatados','emConversa','reuniaoAgendamento','propostaEnviada'].map(k=><Card key={k} style={{padding:15}}><Label>{k === 'emConversa' ? 'Em conversa · responderam' : KPI_LABELS[k]}</Label><div style={{fontSize:26,fontWeight:900,marginTop:8}}>{accumulated[k]}</div></Card>)}
         <Card style={{padding:15}}><Label>Vendas</Label><div style={{fontSize:26,fontWeight:900,marginTop:8}}>{accumulatedSales.length}</div></Card>
       </div>
     </div>
@@ -240,6 +251,27 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
         <div style={{display:'flex',justifyContent:'flex-end',marginBottom:10}}><button onClick={copy} style={{background:copied?T.success:T.accent,color:'#08111B',border:0,borderRadius:8,padding:'8px 12px',fontWeight:900,cursor:'pointer'}}>{copied?'Copiado!':'Copiar para WhatsApp'}</button></div>
         <pre style={{whiteSpace:'pre-wrap',fontFamily:'inherit',fontSize:12,lineHeight:1.55,color:T.textSec,background:T.bg,border:`1px solid ${T.border}`,borderRadius:10,padding:14,margin:0}}>{report}</pre>
       </Card>}
+    </div>
+
+    <div>
+      <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>Taxas do funil · {campaign}</div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:10}}>
+        <Card>
+          <Label>Conversão geral</Label>
+          <div style={{fontSize:28,fontWeight:900,marginTop:9,color:T.accent}}>{conversionRate.toFixed(1)}%</div>
+          <div style={{fontSize:11,color:T.textMuted,marginTop:5}}>vendas ÷ leads recebidos</div>
+        </Card>
+        <Card>
+          <Label>Taxa de resposta</Label>
+          <div style={{fontSize:28,fontWeight:900,marginTop:9,color:T.accent}}>{responseRate.toFixed(1)}%</div>
+          <div style={{fontSize:11,color:T.textMuted,marginTop:5}}>em conversa ÷ leads contatados</div>
+        </Card>
+        <Card>
+          <Label>Fechamento sobre propostas</Label>
+          <div style={{fontSize:28,fontWeight:900,marginTop:9,color:T.accent}}>{proposalCloseRate.toFixed(1)}%</div>
+          <div style={{fontSize:11,color:T.textMuted,marginTop:5}}>vendas ÷ propostas enviadas</div>
+        </Card>
+      </div>
     </div>
 
     <div>
