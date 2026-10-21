@@ -14,6 +14,7 @@ import TabCRM from '../components/TabCRMComComissao';
 import TabMetas from '../components/TabMetas';
 import TabRelatorios from '../components/TabRelatoriosComTexto';
 import { T } from '../lib/theme';
+import TabLinks from '../components/TabLinks';
 
 const NAV = [
   { key: 'visao', label: 'Dashboard' },
@@ -23,6 +24,7 @@ const NAV = [
   { key: 'acoes', label: 'Próximas Ações' },
   { key: 'crm', label: 'Vendas' },
   { key: 'relatorios', label: 'Relatórios' },
+  { key: 'links', label: 'Central de Links' },
   { key: 'metas', label: 'Metas' },
 ];
 
@@ -157,6 +159,7 @@ export default function Dashboard({ profile, accessToken, isAdmin, isEspectador,
           {tab === 'calls' && (ownModule ? <TabCalls calls={salesOS.calls} readOnly={false} addCall={salesOS.addCall} updateCall={salesOS.updateCall} deleteCall={salesOS.deleteCall} vendas={ownVendas.vendas} addVenda={ownVendas.addVenda} updateVenda={ownVendas.updateVenda} deleteVenda={ownVendas.deleteVenda} /> : teamNotice)}
           {tab === 'acoes' && (ownModule ? <TabAcoes acoes={salesOS.acoes} readOnly={false} addAcao={salesOS.addAcao} updateAcao={salesOS.updateAcao} deleteAcao={salesOS.deleteAcao} /> : teamNotice)}
           {tab === 'crm' && <TabCRM vendas={display.vendas} readOnly={display.readOnly} viewLabel={display.label} addVenda={ownVendas.addVenda} updateVenda={ownVendas.updateVenda} deleteVenda={ownVendas.deleteVenda} />}
+          {tab === 'links' && <TabLinks canEdit={!isEspectador} />}
           {tab === 'metas' && (ownModule ? <TabMetas metas={salesOS.metas} vendas={ownVendas.vendas} calls={salesOS.calls} kpisProsp={ownKpisProsp.kpis} readOnly={false} upsertMeta={salesOS.upsertMeta} /> : teamNotice)}
           {tab === 'relatorios' && <TabRelatorios kpis={display.kpis} kpisProsp={display.kpisProsp} vendas={display.vendas} viewLabel={display.label} isAdmin={isAdmin} isTeamView={viewMode === 'team'} admins={teamKpisHook.admins} teamKpis={teamKpisHook.teamKpis} teamKpisProsp={teamKpisProspHook.teamKpis} teamVendas={teamVendasHook.teamVendas} />}
         </main>
