@@ -117,6 +117,15 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
   const responseRate = pct(accumulated.emConversa, accumulated.leadsContatados);
   const proposalCloseRate = pct(funnelSales.length, accumulated.propostaEnviada);
 
+  const cycleSales = filterSales('',date).filter(v => v.data_entrada_lead && String(v.data_entrada_lead).slice(0,10) <= String(v.data_venda || v.dataVenda || '').slice(0,10));
+  const cycleDays = cycleSales.map(v => Math.round((Date.parse(String(v.data_venda || v.dataVenda).slice(0,10) + 'T12:00:00Z') - Date.parse(String(v.data_entrada_lead).slice(0,10) + 'T12:00:00Z')) / 86400000));
+  const averageCycle = cycleDays.length ? cycleDays.reduce((a,b)=>a+b,0) / cycleDays.length : null;
+  const fupSales = filterSales('',date).filter(v => v.fups_ate_compra !== null && v.fups_ate_compra !== undefined && v.fups_ate_compra !== '');
+  const averageFups = fupSales.length ? fupSales.reduce((a,v)=>a+Number(v.fups_ate_compra),0) / fupSales.length : null;
+  const withinDay = cycleDays.filter(d=>d===0).length;
+  const withinWeek = cycleDays.filter(d=>d>=1&&d<=7).length;
+  const overWeek = cycleDays.filter(d=>d>7).length;
+
   const monthStart = date.slice(0,7) + '-01';
   const monthSales = filterSales(monthStart, date);
   const monthRevenue = monthSales.reduce((s,v)=>s+Number(v.valor||0),0);
@@ -234,15 +243,6 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
     </div>
 
     <div>
-      <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>Resultado de hoje · aba Vendas</div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:10}}>
-        <Card><Label>Vendas hoje</Label><div style={{fontSize:28,fontWeight:900,marginTop:9}}>{salesDay.length}</div></Card>
-        <Card><Label>Faturamento hoje</Label><div style={{fontSize:25,fontWeight:900,marginTop:9,color:T.success}}>{brl(revenueDay)}</div></Card>
-        <Card><Label>Ticket médio hoje</Label><div style={{fontSize:25,fontWeight:900,marginTop:9}}>{brl(ticketDay)}</div></Card>
-      </div>
-    </div>
-
-    <div>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:12}}>
         <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec}}>Relatório diário de KPIs</div>
         <button onClick={()=>setShowReport(v=>!v)} style={{background:T.accent,color:'#08111B',border:0,borderRadius:8,padding:'9px 13px',fontWeight:900,cursor:'pointer'}}>{showReport?'Ocultar relatório':'Gerar relatório'}</button>
@@ -272,6 +272,18 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
           <div style={{fontSize:11,color:T.textMuted,marginTop:5}}>vendas ÷ propostas enviadas</div>
         </Card>
       </div>
+    </div>
+
+    <div>
+      <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>Inteligência comercial · {campaign}</div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:10}}>
+        <Card><Label>Tempo médio até fechar</Label><div style={{fontSize:26,fontWeight:900,marginTop:9}}>{averageCycle===null?'—':averageCycle.toFixed(1)+' dias'}</div><div style={{fontSize:11,color:T.textMuted,marginTop:6}}>{cycleSales.length} vendas com data de entrada</div></Card>
+        <Card><Label>FUPs médios até comprar</Label><div style={{fontSize:26,fontWeight:900,marginTop:9}}>{averageFups===null?'—':averageFups.toFixed(1)}</div><div style={{fontSize:11,color:T.textMuted,marginTop:6}}>{fupSales.length} vendas com FUP registrado</div></Card>
+        <Card><Label>Compraram no mesmo dia</Label><div style={{fontSize:26,fontWeight:900,marginTop:9}}>{cycleSales.length?((withinDay/cycleSales.length)*100).toFixed(1)+'%':'—'}</div><div style={{fontSize:11,color:T.textMuted,marginTop:6}}>{withinDay} de {cycleSales.length} vendas medidas</div></Card>
+        <Card><Label>Compraram em 1–7 dias</Label><div style={{fontSize:26,fontWeight:900,marginTop:9}}>{cycleSales.length?((withinWeek/cycleSales.length)*100).toFixed(1)+'%':'—'}</div><div style={{fontSize:11,color:T.textMuted,marginTop:6}}>{withinWeek} de {cycleSales.length} vendas medidas</div></Card>
+        <Card><Label>Compraram após 7 dias</Label><div style={{fontSize:26,fontWeight:900,marginTop:9}}>{cycleSales.length?((overWeek/cycleSales.length)*100).toFixed(1)+'%':'—'}</div><div style={{fontSize:11,color:T.textMuted,marginTop:6}}>{overWeek} de {cycleSales.length} vendas medidas</div></Card>
+      </div>
+      <div style={{fontSize:11,color:T.textMuted,marginTop:8}}>Indicadores calculados apenas sobre vendas com dados preenchidos; não incluem vendas sem informações de entrada ou FUP.</div>
     </div>
 
     <div>
