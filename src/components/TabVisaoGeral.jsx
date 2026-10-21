@@ -254,8 +254,9 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
     </div>
 
     <div>
-      <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>Taxas do funil · {campaign}</div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:10}}>
+      <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>Métricas do Funil · {campaign}</div>
+      <div style={{fontSize:12,fontWeight:700,color:T.textSec,marginBottom:10}}>Eficiência comercial</div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:10}}>
         <Card>
           <Label>Conversão geral</Label>
           <div style={{fontSize:28,fontWeight:900,marginTop:9,color:T.accent}}>{conversionRate.toFixed(1)}%</div>
@@ -272,10 +273,7 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
           <div style={{fontSize:11,color:T.textMuted,marginTop:5}}>vendas ÷ propostas enviadas</div>
         </Card>
       </div>
-    </div>
-
-    <div>
-      <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>Inteligência comercial · {campaign}</div>
+      <div style={{fontSize:12,fontWeight:700,color:T.textSec,margin:'18px 0 10px'}}>Ciclo de vendas</div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:10}}>
         <Card><Label>Tempo médio até fechar</Label><div style={{fontSize:26,fontWeight:900,marginTop:9}}>{averageCycle===null?'—':averageCycle.toFixed(1)+' dias'}</div><div style={{fontSize:11,color:T.textMuted,marginTop:6}}>{cycleSales.length} vendas com data de entrada</div></Card>
         <Card><Label>FUPs médios até comprar</Label><div style={{fontSize:26,fontWeight:900,marginTop:9}}>{averageFups===null?'—':averageFups.toFixed(1)}</div><div style={{fontSize:11,color:T.textMuted,marginTop:6}}>{fupSales.length} vendas com FUP registrado</div></Card>
