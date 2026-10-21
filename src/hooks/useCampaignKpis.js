@@ -35,6 +35,7 @@ export function useCampaignKpis(userId, accessToken) {
       reuniao_agendamento: Number(values.reuniaoAgendamento || 0),
       proposta_enviada: Number(values.propostaEnviada || 0),
       sem_interesse: Number(values.semInteresse || 0),
+      leads_desqualificados: Number(values.leadsDesqualificados || 0),
       numero_errado: Number(values.numeroErrado || 0),
       numero_teste: Number(values.numeroTeste || 0),
       sem_contato: Number(values.semContato || 0),
