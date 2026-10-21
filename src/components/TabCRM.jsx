@@ -27,6 +27,8 @@ const validateVenda = (v) => {
   const e = {};
   if (!v.nome.trim()) e.nome = 'Obrigatorio';
   if (!v.dataVenda) e.dataVenda = 'Obrigatorio';
+  if (v.dataEntradaLead && v.dataVenda && v.dataEntradaLead > v.dataVenda) e.dataEntradaLead = 'Entrada não pode ser depois da venda';
+  if (v.fupsAteCompra !== '' && v.fupsAteCompra != null && (!Number.isInteger(Number(v.fupsAteCompra)) || Number(v.fupsAteCompra) < 0)) e.fupsAteCompra = 'Informe um inteiro não negativo';
   if (!v.origem) e.origem = 'Obrigatorio';
   if (!v.produto || v.produto === 'Selecione') e.produto = 'Obrigatorio';
   if (!v.campanha || v.campanha === 'Selecione') e.campanha = 'Obrigatorio';
@@ -42,6 +44,8 @@ const toFormShape = (row) => {
     nome: row.nome,
     telefone: row.telefone || '',
     dataVenda: row.data_venda,
+    dataEntradaLead: row.data_entrada_lead || '',
+    fupsAteCompra: row.fups_ate_compra ?? '',
     origem: row.origem,
     produto: isProdutoLista ? row.produto : 'Outros',
     campanha: row.campanha || '',
@@ -51,7 +55,7 @@ const toFormShape = (row) => {
   };
 };
 
-const EMPTY = { nome: '', telefone: '', dataVenda: today(), origem: '', produto: '', campanha: '', produtoOutros: '', valor: '', observacao: '' };
+const EMPTY = { nome: '', telefone: '', dataVenda: today(), dataEntradaLead: '', fupsAteCompra: '', origem: '', produto: '', campanha: '', produtoOutros: '', valor: '', observacao: '' };
 
 function Card({ children, style = {} }) {
   return <div style={Object.assign({ background: T.surface, border: '1px solid ' + T.border, borderRadius: 10, padding: '20px 24px' }, style)}>{children}</div>;
@@ -231,6 +235,8 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
               <Input label="Nome" value={form.nome} onChange={(v) => sf('nome', v)} error={errors.nome} placeholder="Nome do cliente" />
               <Input label="Telefone (opcional)" value={form.telefone} onChange={(v) => sf('telefone', formatPhone(v))} placeholder="(11) 99999-9999" />
               <Input label="Data da venda" type="date" value={form.dataVenda} onChange={(v) => sf('dataVenda', v)} error={errors.dataVenda} />
+              <Input label="Entrada do lead (opcional)" type="date" value={form.dataEntradaLead} onChange={(v) => sf('dataEntradaLead', v)} error={errors.dataEntradaLead} />
+              <Input label="FUPs até comprar (opcional)" type="number" value={form.fupsAteCompra} onChange={(v) => sf('fupsAteCompra', v)} error={errors.fupsAteCompra} placeholder="Ex.: 3" />
               <Select label="Origem" value={form.origem || 'Selecione'} onChange={(v) => sf('origem', v)} options={['Selecione', ...ORIGENS]} error={errors.origem} />
               <Select label="Campanha" value={form.campanha || 'Selecione'} onChange={(v) => sf('campanha', v)} options={['Selecione', ...CAMPAIGNS]} error={errors.campanha} />
               <Select label="Produto" value={form.produto || 'Selecione'} onChange={(v) => sf('produto', v)} options={['Selecione', ...PRODUTOS]} error={errors.produto} />
