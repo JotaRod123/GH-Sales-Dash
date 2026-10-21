@@ -22,6 +22,8 @@ const normalizeVenda = (v) => {
     origem,
     produto: v.produto,
     campanha: v.campanha || null,
+    data_entrada_lead: v.data_entrada_lead || v.dataEntradaLead || null,
+    fups_ate_compra: v.fups_ate_compra === '' || v.fups_ate_compra == null ? (v.fupsAteCompra === '' || v.fupsAteCompra == null ? null : Number(v.fupsAteCompra)) : Number(v.fups_ate_compra),
     valor,
     observacao: v.observacao || '',
     prospect_id: v.prospect_id || v.prospectId || null,
