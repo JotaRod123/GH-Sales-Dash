@@ -20,6 +20,7 @@ const KPI_LABELS = {
   reuniaoAgendamento: 'Reunião / agendamento',
   propostaEnviada: 'Proposta / oferta enviada',
   semInteresse: 'Sem interesse',
+  leadsDesqualificados: 'Leads desqualificados',
   numeroErrado: 'Número cadastrado errado',
   numeroTeste: 'Número de teste',
   semContato: 'Sem contato realizado',
@@ -38,6 +39,7 @@ const normalize = (r) => ({
   reuniaoAgendamento: Number(r.reuniao_agendamento || 0),
   propostaEnviada: Number(r.proposta_enviada || 0),
   semInteresse: Number(r.sem_interesse || 0),
+  leadsDesqualificados: Number(r.leads_desqualificados || 0),
   numeroErrado: Number(r.numero_errado || 0),
   numeroTeste: Number(r.numero_teste || 0),
   semContato: Number(r.sem_contato || 0),
@@ -177,6 +179,7 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
 • Proposta/oferta enviada: ${display.propostaEnviada}
 • Compras realizadas: ${salesDay.length}
 • Sem interesse: ${display.semInteresse}
+• Leads desqualificados: ${display.leadsDesqualificados}
 • Número cadastrado errado: ${display.numeroErrado}
 • Número de teste: ${display.numeroTeste}
 • Sem contato realizado: ${display.semContato}
@@ -228,7 +231,7 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
     <div>
       <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>Acumulado · {campaign}</div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:10}}>
-        {['leadsRecebidos','leadsContatados','emConversa','reuniaoAgendamento','propostaEnviada'].map(k=><Card key={k} style={{padding:15}}><Label>{k === 'emConversa' ? 'Em conversa · responderam' : KPI_LABELS[k]}</Label><div style={{fontSize:26,fontWeight:900,marginTop:8}}>{accumulated[k]}</div></Card>)}
+        {['leadsRecebidos','leadsContatados','emConversa','reuniaoAgendamento','propostaEnviada','leadsDesqualificados'].map(k=><Card key={k} style={{padding:15}}><Label>{k === 'emConversa' ? 'Em conversa · responderam' : KPI_LABELS[k]}</Label><div style={{fontSize:26,fontWeight:900,marginTop:8}}>{accumulated[k]}</div></Card>)}
         <Card style={{padding:15}}><Label>Vendas</Label><div style={{fontSize:26,fontWeight:900,marginTop:8}}>{accumulatedSales.length}</div></Card>
       </div>
     </div>
