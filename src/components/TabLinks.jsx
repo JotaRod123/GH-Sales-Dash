@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { T } from '../lib/theme';
 
@@ -23,6 +23,10 @@ export default function TabLinks({ canEdit }) {
  const [editing,setEditing]=useState(false);
  const [form,setForm]=useState(empty);
  const [saving,setSaving]=useState(false);
+ const [copiedToast,setCopiedToast]=useState(false);
+ const toastTimer=useRef(null);
+ useEffect(()=>()=>clearTimeout(toastTimer.current),[]);
+ const showCopiedToast=()=>{setCopiedToast(true);clearTimeout(toastTimer.current);toastTimer.current=setTimeout(()=>setCopiedToast(false),2200)};
  const [campaign,setCampaign]=useState('MonsterDay');
  const [category,setCategory]=useState('Ingressos');
  const [product,setProduct]=useState('Gold');
@@ -43,6 +47,7 @@ export default function TabLinks({ canEdit }) {
  async function remove(r){if(!canEdit||!window.confirm(`Remover o link de ${r.product} (${r.payment_method})?`))return;const {data,error:e}=await supabase.from('payment_links').delete().eq('id',r.id).select('id');if(e||!data?.length)setError(e?.message||'Não foi possível remover.');else await reload()}
  const label=(name,children)=><label style={{display:'grid',gap:6,fontSize:12,color:T.textSec}}>{name}{children}</label>;
  return <div style={{display:'grid',gap:20,maxWidth:900}}>
+  {copiedToast&&<div role="status" aria-live="polite" style={{position:'fixed',bottom:24,right:24,zIndex:3000,background:T.surfaceHov,color:T.text,border:`1px solid ${T.borderMid}`,boxShadow:'0 10px 32px rgba(0,0,0,.32)',padding:'12px 18px',borderRadius:10,fontSize:13,fontWeight:800}}>✓ Link copiado!</div>}
   <div style={{display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap',alignItems:'center'}}><div><h2 style={{margin:0}}>Central de Links</h2><p style={{color:T.textSec,fontSize:13}}>Escolha a campanha, o produto e a condição de pagamento.</p></div>{canEdit&&<button style={btn} onClick={()=>{setEditing(!editing);setError('')}}>✎ {editing?'Fechar edição':'Editar Links'}</button>}</div>
   {error&&<div role="alert" style={{color:'#ff9c9c',padding:12,border:'1px solid #8d4444',borderRadius:9}}>{error}</div>}
   {editing&&canEdit&&<div style={{background:T.surface,padding:18,borderRadius:14,border:`1px solid ${T.border}`,display:'grid',gap:16}}>
@@ -66,7 +71,7 @@ export default function TabLinks({ canEdit }) {
   </div>
   <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,padding:20,display:'grid',gap:12}}>
    <div style={{color:T.textSec,fontSize:12}}>Link selecionado</div><strong>{product} — {method}</strong>
-   {loading?<span>Carregando...</span>:selected?<><div style={{fontSize:13,color:T.textSec}}>{selected.provider}</div><div style={{overflowWrap:'anywhere',fontSize:13}}>{selected.url}</div><div style={{display:'flex',gap:10,flexWrap:'wrap'}}><button style={btn} onClick={async()=>{try{await navigator.clipboard.writeText(selected.url);setError('')}catch{setError('Não foi possível copiar automaticamente.')}}}>Copiar link</button><a style={{...btn,textDecoration:'none'}} href={selected.url} target="_blank" rel="noopener noreferrer">Abrir link ↗</a></div></>:<span style={{color:T.textSec,fontSize:13}}>Link ainda não cadastrado. Use Editar Links para adicionar.</span>}
+   {loading?<span>Carregando...</span>:selected?<><div style={{fontSize:13,color:T.textSec}}>{selected.provider}</div><div style={{overflowWrap:'anywhere',fontSize:13}}>{selected.url}</div><div style={{display:'flex',gap:10,flexWrap:'wrap'}}><button style={btn} onClick={async()=>{try{await navigator.clipboard.writeText(selected.url);setError('');showCopiedToast()}catch{setError('Não foi possível copiar automaticamente.')}}}>Copiar link</button><a style={{...btn,textDecoration:'none'}} href={selected.url} target="_blank" rel="noopener noreferrer">Abrir link ↗</a></div></>:<span style={{color:T.textSec,fontSize:13}}>Link ainda não cadastrado. Use Editar Links para adicionar.</span>}
   </div>
  </div>;
 }
