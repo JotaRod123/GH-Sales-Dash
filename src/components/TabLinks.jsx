@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { T } from '../lib/theme';
 
 const SEED = {
@@ -40,29 +40,7 @@ export default function TabLinks({ canEdit }) {
  const methods=[...new Set([...rows.filter(r=>r.campaign===activeCampaign&&r.category===activeCategory&&r.product===activeProduct).map(r=>r.payment_method),...(PAYMENT[activeCategory]||[])])];
  const activeMethod=methods.includes(method)?method:(methods[0]||'');
  const selected=rows.find(r=>r.campaign===activeCampaign&&r.category===activeCategory&&r.product===activeProduct&&r.payment_method===activeMethod);
- const loadSeq=useRef(0);
- const [loadError,setLoadError]=useState('');
- async function reload(){
-   const seq=++loadSeq.current;
-   setLoading(true);
-   setLoadError('');
-   const controller=new AbortController();
-   const timer=setTimeout(()=>controller.abort(),8000);
-   try {
-     const response=await window.fetch(`${SUPABASE_URL}/rest/v1/payment_links?select=*&order=campaign.asc,product.asc`,{
-       signal:controller.signal,
-       headers:{apikey:SUPABASE_ANON_KEY,Authorization:`Bearer ${SUPABASE_ANON_KEY}`}
-     });
-     if(!response.ok)throw new Error(`Erro HTTP ${response.status}`);
-     const data=await response.json();
-     if(seq===loadSeq.current){setRows(Array.isArray(data)?data:[]);setLoadError('')}
-   } catch(e){
-     if(seq===loadSeq.current)setLoadError(e?.name==='AbortError'?'A consulta demorou demais. Tente novamente.':'Não foi possível carregar os links. Tente novamente.');
-   } finally {
-     clearTimeout(timer);
-     if(seq===loadSeq.current)setLoading(false);
-   }
- }
+ async function reload(){setLoading(true);const {data,error:e}=await supabase.from('payment_links').select('*').order('campaign').order('product');setRows(data||[]);setError(e?.message||'');setLoading(false)}
  useEffect(()=>{reload()},[]);
  const changeCampaign=v=>{setCampaign(v);const c=Object.keys(SEED[v]||{})[0]||rows.find(r=>r.campaign===v)?.category||'';setCategory(c);const p=SEED[v]?.[c]?.[0]||rows.find(r=>r.campaign===v&&r.category===c)?.product||'';setProduct(p);const available=rows.filter(r=>r.campaign===v&&r.category===c&&r.product===p).map(r=>r.payment_method);setMethod(available.includes('Cartão / À vista')?'Cartão / À vista':(available[0]||PAYMENT[c]?.[0]||''))};
  const changeCategory=v=>{setCategory(v);const p=SEED[activeCampaign]?.[v]?.[0]||rows.find(r=>r.campaign===activeCampaign&&r.category===v)?.product||'';setProduct(p);const available=rows.filter(r=>r.campaign===activeCampaign&&r.category===v&&r.product===p).map(r=>r.payment_method);setMethod(available.includes('Cartão / À vista')?'Cartão / À vista':(available[0]||PAYMENT[v]?.[0]||''))};
@@ -97,7 +75,7 @@ export default function TabLinks({ canEdit }) {
   </div>
   <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,padding:20,display:'grid',gap:12}}>
    <div style={{color:T.textSec,fontSize:12}}>Link selecionado</div><strong>{activeProduct} — {activeMethod}</strong>
-   {loading?<span style={{color:T.textSec}}>Carregando links...</span>:loadError?<div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}><span style={{color:T.danger,fontSize:13}}>{loadError}</span><button style={btn} onClick={reload}>Tentar novamente</button></div>:selected?<><div style={{fontSize:13,color:T.textSec}}>{selected.provider}</div><div style={{overflowWrap:'anywhere',fontSize:13}}>{selected.url}</div><div style={{display:'flex',gap:10,flexWrap:'wrap'}}><button style={btn} onClick={async()=>{try{await navigator.clipboard.writeText(selected.url);setError('');showCopiedToast()}catch{setError('Não foi possível copiar automaticamente.')}}}>Copiar link</button><a style={{...btn,textDecoration:'none'}} href={selected.url} target="_blank" rel="noopener noreferrer">Abrir link ↗</a></div></>:<span style={{color:T.textSec,fontSize:13}}>Link ainda não cadastrado. Use Editar Links para adicionar.</span>}
+   {loading?<span>Carregando...</span>:selected?<><div style={{fontSize:13,color:T.textSec}}>{selected.provider}</div><div style={{overflowWrap:'anywhere',fontSize:13}}>{selected.url}</div><div style={{display:'flex',gap:10,flexWrap:'wrap'}}><button style={btn} onClick={async()=>{try{await navigator.clipboard.writeText(selected.url);setError('');showCopiedToast()}catch{setError('Não foi possível copiar automaticamente.')}}}>Copiar link</button><a style={{...btn,textDecoration:'none'}} href={selected.url} target="_blank" rel="noopener noreferrer">Abrir link ↗</a></div></>:<span style={{color:T.textSec,fontSize:13}}>Link ainda não cadastrado. Use Editar Links para adicionar.</span>}
   </div>
  </div>;
 }
