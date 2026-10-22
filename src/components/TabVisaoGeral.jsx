@@ -17,6 +17,8 @@ const KPI_LABELS = {
   leadsContatados: 'Leads contatados',
   aguardandoResposta: 'Aguardando resposta',
   emConversa: 'Em conversa',
+  fupsRealizados: 'FUPs realizados',
+  fupsRespondidos: 'FUPs respondidos',
   reuniaoAgendamento: 'Reunião / agendamento',
   propostaEnviada: 'Proposta / oferta enviada',
   semInteresse: 'Sem interesse',
@@ -36,6 +38,8 @@ const normalize = (r) => ({
   leadsContatados: Number(r.leads_contatados || 0),
   aguardandoResposta: Number(r.aguardando_resposta || 0),
   emConversa: Number(r.em_conversa || 0),
+  fupsRealizados: Number(r.fups_realizados || 0),
+  fupsRespondidos: Number(r.fups_respondidos || 0),
   reuniaoAgendamento: Number(r.reuniao_agendamento || 0),
   propostaEnviada: Number(r.proposta_enviada || 0),
   semInteresse: Number(r.sem_interesse || 0),
@@ -117,6 +121,7 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
   const pct = (num, den) => den > 0 ? (num / den) * 100 : 0;
   const conversionRate = pct(funnelSales.length, accumulated.leadsRecebidos);
   const responseRate = pct(accumulated.emConversa, accumulated.leadsContatados);
+  const followupResponseRate = pct(accumulated.fupsRespondidos, accumulated.fupsRealizados);
   const proposalCloseRate = pct(funnelSales.length, accumulated.propostaEnviada);
 
   const cycleSales = filterSales('',date).filter(v => v.data_entrada_lead && String(v.data_entrada_lead).slice(0,10) <= String(v.data_venda || v.dataVenda || '').slice(0,10));
@@ -175,6 +180,8 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
 • Leads contatados: ${display.leadsContatados}
 • Aguardando resposta: ${display.aguardandoResposta}
 • Em conversa: ${display.emConversa}
+• FUPs realizados: ${display.fupsRealizados}
+• FUPs respondidos: ${display.fupsRespondidos}
 • Reunião/agendamento: ${display.reuniaoAgendamento}
 • Proposta/oferta enviada: ${display.propostaEnviada}
 • Compras realizadas: ${salesDay.length}
@@ -231,7 +238,7 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
     <div>
       <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>Acumulado · {campaign}</div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:10}}>
-        {['leadsRecebidos','leadsContatados','emConversa','reuniaoAgendamento','propostaEnviada','leadsDesqualificados'].map(k=><Card key={k} style={{padding:15}}><Label>{k === 'emConversa' ? 'Em conversa · responderam' : KPI_LABELS[k]}</Label><div style={{fontSize:26,fontWeight:900,marginTop:8}}>{accumulated[k]}</div></Card>)}
+        {['leadsRecebidos','leadsContatados','emConversa','fupsRealizados','fupsRespondidos','reuniaoAgendamento','propostaEnviada','leadsDesqualificados'].map(k=><Card key={k} style={{padding:15}}><Label>{k === 'emConversa' ? 'Em conversa · responderam' : KPI_LABELS[k]}</Label><div style={{fontSize:26,fontWeight:900,marginTop:8}}>{accumulated[k]}</div></Card>)}
         <Card style={{padding:15}}><Label>Vendas</Label><div style={{fontSize:26,fontWeight:900,marginTop:8}}>{accumulatedSales.length}</div></Card>
       </div>
     </div>
@@ -269,6 +276,11 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
           <Label>Taxa de resposta</Label>
           <div style={{fontSize:28,fontWeight:900,marginTop:9,color:T.accent}}>{responseRate.toFixed(1)}%</div>
           <div style={{fontSize:11,color:T.textMuted,marginTop:5}}>em conversa ÷ leads contatados</div>
+        </Card>
+        <Card>
+          <Label>Resposta do FUP</Label>
+          <div style={{fontSize:28,fontWeight:900,marginTop:9,color:T.accent}}>{accumulated.fupsRealizados ? followupResponseRate.toFixed(1)+'%' : '—'}</div>
+          <div style={{fontSize:11,color:T.textMuted,marginTop:5}}>FUPs respondidos ÷ FUPs realizados</div>
         </Card>
         <Card>
           <Label>Fechamento sobre propostas</Label>
