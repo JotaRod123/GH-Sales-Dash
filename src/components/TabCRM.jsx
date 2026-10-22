@@ -31,7 +31,6 @@ const validateVenda = (v) => {
   if (v.fupsAteCompra !== '' && v.fupsAteCompra != null && (!Number.isInteger(Number(v.fupsAteCompra)) || Number(v.fupsAteCompra) < 0)) e.fupsAteCompra = 'Informe um inteiro não negativo';
   if (!v.origem) e.origem = 'Obrigatorio';
   if (!v.produto || v.produto === 'Selecione') e.produto = 'Obrigatorio';
-  if (!v.campanha || v.campanha === 'Selecione') e.campanha = 'Obrigatorio';
   if (v.produto === 'Outros' && !v.produtoOutros.trim()) e.produtoOutros = 'Obrigatorio';
   if (!v.valor || isNaN(parseFloat(v.valor))) e.valor = 'Valor numerico obrigatorio';
   return e;
@@ -238,7 +237,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
               <Input label="Entrada do lead (opcional)" type="date" value={form.dataEntradaLead} onChange={(v) => sf('dataEntradaLead', v)} error={errors.dataEntradaLead} />
               <Input label="FUPs até comprar (opcional)" type="number" value={form.fupsAteCompra} onChange={(v) => sf('fupsAteCompra', v)} error={errors.fupsAteCompra} placeholder="Ex.: 3" />
               <Select label="Origem" value={form.origem || 'Selecione'} onChange={(v) => sf('origem', v)} options={['Selecione', ...ORIGENS]} error={errors.origem} />
-              <Select label="Campanha" value={form.campanha || 'Selecione'} onChange={(v) => sf('campanha', v)} options={['Selecione', ...CAMPAIGNS]} error={errors.campanha} />
+              <Select label="Campanha (opcional)" value={form.campanha || ''} onChange={(v) => sf('campanha', v)} options={['', ...CAMPAIGNS]} />
               <Select label="Produto" value={form.produto || 'Selecione'} onChange={(v) => sf('produto', v)} options={['Selecione', ...PRODUTOS]} error={errors.produto} />
               {form.produto === 'Outros' && <Input label="Qual produto?" value={form.produtoOutros} onChange={(v) => sf('produtoOutros', v)} error={errors.produtoOutros} placeholder="Nome do produto" />}
               <Input label="Valor (R$)" type="number" value={form.valor} onChange={(v) => sf('valor', v)} error={errors.valor} placeholder="0.00" />
@@ -332,7 +331,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
             <Input label="Telefone (opcional)" value={editVenda.telefone} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { telefone: formatPhone(v) }))} />
             <Input label="Data da venda" type="date" value={editVenda.dataVenda} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { dataVenda: v }))} error={editErrors.dataVenda} />
             <Select label="Origem" value={editVenda.origem} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { origem: v }))} options={ORIGENS} error={editErrors.origem} />
-            <Select label="Campanha" value={editVenda.campanha || 'Selecione'} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { campanha: v }))} options={['Selecione', ...CAMPAIGNS]} error={editErrors.campanha} />
+            <Select label="Campanha (opcional)" value={editVenda.campanha || ''} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { campanha: v }))} options={['', ...CAMPAIGNS]} />
             <Select label="Produto" value={editVenda.produto} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { produto: v }))} options={PRODUTOS} error={editErrors.produto} />
             {editVenda.produto === 'Outros' && <Input label="Qual produto?" value={editVenda.produtoOutros} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { produtoOutros: v }))} error={editErrors.produtoOutros} />}
             <Input label="Valor (R$)" type="number" value={editVenda.valor} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { valor: v }))} error={editErrors.valor} />
