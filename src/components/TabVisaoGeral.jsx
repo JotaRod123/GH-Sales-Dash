@@ -111,6 +111,7 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
   const accumulatedRows = rows.filter(r => r.date <= date && (isGeneral || r.campanha === campaign));
   const accumulated = sumRows(accumulatedRows);
   const accumulatedSales = filterSales('',date);
+  const accumulatedRevenue = accumulatedSales.reduce((sum, sale) => sum + Number(sale.valor || 0), 0);
   const funnelSales = isGeneral
     ? vendas.filter(v => {
         const d = String(v.data_venda || v.dataVenda || '').slice(0,10);
@@ -193,8 +194,9 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
 
 💰 Resultado
 • Vendas: ${salesDay.length}
-• Faturamento: ${brl(revenueDay)}`;
-  },[campaign,date,display,yesterday,yesterdayAgg.leadsRecebidos,accumulated.leadsRecebidos,salesDay.length,revenueDay]);
+• Faturamento do dia: ${brl(revenueDay)}
+• Faturamento total acumulado: ${brl(accumulatedRevenue)}`;
+  },[campaign,date,display,yesterday,yesterdayAgg.leadsRecebidos,accumulated.leadsRecebidos,salesDay.length,revenueDay,accumulatedRevenue]);
 
   const copy=async()=>{try{await navigator.clipboard.writeText(report);setCopied(true);setTimeout(()=>setCopied(false),1600);}catch{}};
 
