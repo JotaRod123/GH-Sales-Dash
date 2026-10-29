@@ -193,10 +193,11 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
 • Sem contato realizado: ${display.semContato}
 
 💰 Resultado
-• Vendas: ${salesDay.length}
+• Vendas do dia: ${salesDay.length}
+• Vendas acumuladas: ${accumulatedSales.length}
 • Faturamento do dia: ${brl(revenueDay)}
 • Faturamento total acumulado: ${brl(accumulatedRevenue)}`;
-  },[campaign,date,display,yesterday,yesterdayAgg.leadsRecebidos,accumulated.leadsRecebidos,salesDay.length,revenueDay,accumulatedRevenue]);
+  },[campaign,date,display,yesterday,yesterdayAgg.leadsRecebidos,accumulated.leadsRecebidos,salesDay.length,accumulatedSales.length,revenueDay,accumulatedRevenue]);
 
   const copy=async()=>{try{await navigator.clipboard.writeText(report);setCopied(true);setTimeout(()=>setCopied(false),1600);}catch{}};
 
