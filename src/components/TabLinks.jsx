@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
 import { T } from '../lib/theme';
 
 const SEED = {
@@ -16,7 +16,7 @@ const empty = { campaign:'MonsterDay', category:'Ingressos', product:'Gold', pay
 const inputStyle = {background:T.surface,border:`1px solid ${T.border}`,borderRadius:9,padding:'11px 12px',color:T.text,width:'100%',minWidth:0};
 const btn = {background:T.surfaceHov,color:T.text,border:`1px solid ${T.border}`,borderRadius:9,padding:'10px 14px',cursor:'pointer'};
 const choices = (xs) => xs.map(x=><option key={x} value={x}>{x}</option>);
-export default function TabLinks({ canEdit }) {
+export default function TabLinks({ canEdit, accessToken }) {
  const [rows,setRows]=useState([]);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState('');
@@ -47,7 +47,34 @@ export default function TabLinks({ canEdit }) {
  const changeProduct=v=>{setProduct(v);const available=rows.filter(r=>r.campaign===activeCampaign&&r.category===activeCategory&&r.product===v).map(r=>r.payment_method);setMethod(available.includes('Cartão / À vista')?'Cartão / À vista':(available[0]||PAYMENT[activeCategory]?.[0]||''))};
  const edit=(r)=>{setForm(r?{...r}: {campaign:activeCampaign,category:activeCategory,product:activeProduct,payment_method:activeMethod||'Cartão / À vista',provider:activeMethod.startsWith('Boleto')?'TMB':'Eduzz',url:''});setEditing(true);setError('')};
  const update=(field,value)=>setForm(f=>({...f,[field]:value,...(field==='payment_method'?{provider:value==='Boleto parcelado'?'TMB':'Eduzz'}:{})}));
- async function save(e){e.preventDefault();if(!canEdit)return;setSaving(true);setError('');const payload={campaign:form.campaign.trim(),category:form.category.trim(),product:form.product.trim(),payment_method:form.payment_method.trim(),provider:form.provider.trim(),url:form.url.trim()};if(!/^https:\/\/\S+$/i.test(payload.url)){setError('Informe um link HTTPS válido.');setSaving(false);return}const result=form.id?await supabase.from('payment_links').update(payload).eq('id',form.id).select('id'):await supabase.from('payment_links').insert(payload).select('id');if(result.error||!result.data?.length){setError(result.error?.message||'Não foi possível salvar. Verifique suas permissões.')}else{setEditing(false);await reload();setCampaign(payload.campaign);setCategory(payload.category);setProduct(payload.product);setMethod(payload.payment_method)}setSaving(false)}
+ async function save(e){
+  e.preventDefault();
+  if(!canEdit || saving)return;
+  setSaving(true);setError('');
+  const payload={campaign:form.campaign.trim(),category:form.category.trim(),product:form.product.trim(),payment_method:form.payment_method.trim(),provider:form.provider.trim(),url:form.url.trim()};
+  if(!/^https:\/\/\S+$/i.test(payload.url)){setError('Informe um link HTTPS válido.');setSaving(false);return}
+  if(!accessToken){setError('Sessão expirada. Entre novamente no Dash.');setSaving(false);return}
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),8000);
+  try {
+    const url=form.id
+      ? `${SUPABASE_URL}/rest/v1/payment_links?id=eq.${encodeURIComponent(form.id)}&select=*`
+      : `${SUPABASE_URL}/rest/v1/payment_links?select=*`;
+    const response=await window.fetch(url,{
+      method:form.id?'PATCH':'POST',signal:controller.signal,
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json',Prefer:'return=representation'},
+      body:JSON.stringify(payload)
+    });
+    const body=await response.json().catch(()=>null);
+    if(!response.ok)throw new Error(body?.message||body?.details||`Erro HTTP ${response.status}`);
+    const saved=Array.isArray(body)?body[0]:body;
+    if(!saved)throw new Error('O banco não confirmou a alteração. Confira suas permissões.');
+    setRows(prev=>[...prev.filter(r=>r.id!==saved.id),saved].sort((a,b)=>a.campaign.localeCompare(b.campaign)||a.product.localeCompare(b.product)));
+    setEditing(false);setCampaign(saved.campaign);setCategory(saved.category);setProduct(saved.product);setMethod(saved.payment_method);
+  } catch(e){
+    setError(e?.name==='AbortError'?'O salvamento demorou demais. Confira se houve alteração antes de tentar novamente.':(e?.message||'Não foi possível salvar o link.'));
+  } finally {clearTimeout(timer);setSaving(false)}
+ }
  async function remove(r){if(!canEdit||!window.confirm(`Remover o link de ${r.product} (${r.payment_method})?`))return;const {data,error:e}=await supabase.from('payment_links').delete().eq('id',r.id).select('id');if(e||!data?.length)setError(e?.message||'Não foi possível remover.');else await reload()}
  const label=(name,children)=><label style={{display:'grid',gap:6,fontSize:12,color:T.textSec}}>{name}{children}</label>;
  return <div style={{display:'grid',gap:20,maxWidth:900}}>
@@ -60,7 +87,7 @@ export default function TabLinks({ canEdit }) {
     {label('Campanha',<input required style={inputStyle} value={form.campaign} onChange={e=>update('campaign',e.target.value)}/>)}
     {label('Categoria',<input required style={inputStyle} value={form.category} onChange={e=>update('category',e.target.value)}/>)}
     {label('Produto',<input required style={inputStyle} value={form.product} onChange={e=>update('product',e.target.value)}/>)}
-    {label('Pagamento',<select style={inputStyle} value={form.payment_method} onChange={e=>update('payment_method',e.target.value)}>{choices(['Cartão / À vista','Recorrência','Boleto parcelado'])}</select>)}
+    {label('Pagamento',<select style={inputStyle} value={form.payment_method} onChange={e=>update('payment_method',e.target.value)}>{choices([...new Set(['Cartão / À vista','Recorrência','Boleto parcelado',...rows.map(r=>r.payment_method),form.payment_method].filter(Boolean))])}</select>)}
     {label('Plataforma',<input required style={inputStyle} value={form.provider} onChange={e=>update('provider',e.target.value)}/>)}
     {label('Link HTTPS',<input required type="url" style={inputStyle} value={form.url} onChange={e=>update('url',e.target.value)} placeholder="https://..."/>)}
     <div style={{display:'flex',gap:8,alignItems:'end'}}><button disabled={saving} type="submit" style={btn}>{saving?'Salvando...':form.id?'Salvar alterações':'Adicionar link'}</button><button type="button" style={btn} onClick={()=>setForm({...empty,campaign:activeCampaign,category:activeCategory,product:activeProduct})}>Novo</button></div>
