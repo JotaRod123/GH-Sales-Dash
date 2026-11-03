@@ -32,7 +32,7 @@ export default function TabRelatoriosComTexto({campaignKpis=[],kpisProsp=[],vend
   ].filter(Boolean))].sort().reverse(),[campaignKpis,kpisProsp,vendas]);
   const selectedMonth=months.includes(month)?month:months[0];
   const monthStart=selectedMonth+'-01';
-  const monthEnd=new Date(Number(selectedMonth.slice(0,4)),Number(selectedMonth.slice(5,7)),0).toLocaleDateString('en-CA');
+  const monthEnd=selectedMonth+'-'+String(new Date(Number(selectedMonth.slice(0,4)),Number(selectedMonth.slice(5,7)),0).getDate()).padStart(2,'0');
   const periodFrom=dateFrom||monthStart;
   const periodTo=dateTo||monthEnd;
   const withinPeriod=d=>Boolean(d)&&d>=periodFrom&&d<=periodTo;
