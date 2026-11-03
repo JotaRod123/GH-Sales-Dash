@@ -22,6 +22,8 @@ const reportCopy = async text => {
 export default function TabRelatoriosComTexto({campaignKpis=[],kpisProsp=[],vendas=[],viewLabel='Meus dados'}) {
   const [section,setSection]=useState('commercial');
   const [month,setMonth]=useState('');
+  const [dateFrom,setDateFrom]=useState('');
+  const [dateTo,setDateTo]=useState('');
   const [campaign,setCampaign]=useState('Geral');
   const [copied,setCopied]=useState(false);
   const months=useMemo(()=>[...new Set([
@@ -29,10 +31,16 @@ export default function TabRelatoriosComTexto({campaignKpis=[],kpisProsp=[],vend
     ...vendas.map(v=>monthOf(dateOf(v))),new Date().toISOString().slice(0,7)
   ].filter(Boolean))].sort().reverse(),[campaignKpis,kpisProsp,vendas]);
   const selectedMonth=months.includes(month)?month:months[0];
+  const monthStart=selectedMonth+'-01';
+  const monthEnd=new Date(Number(selectedMonth.slice(0,4)),Number(selectedMonth.slice(5,7)),0).toLocaleDateString('en-CA');
+  const periodFrom=dateFrom||monthStart;
+  const periodTo=dateTo||monthEnd;
+  const withinPeriod=d=>Boolean(d)&&d>=periodFrom&&d<=periodTo;
+  const periodLabel=`${periodFrom.split('-').reverse().join('/')} a ${periodTo.split('-').reverse().join('/')}`;
   const campaigns=[...new Set(campaignKpis.map(r=>r.campanha).filter(Boolean))].sort();
   const activeCampaign=campaign==='Geral'||campaigns.includes(campaign)?campaign:'Geral';
-  const cv=vendas.filter(v=>monthOf(dateOf(v))===selectedMonth && (activeCampaign==='Geral'||v.campanha===activeCampaign));
-  const ck=campaignKpis.filter(r=>monthOf(r.data)===selectedMonth && (activeCampaign==='Geral'||r.campanha===activeCampaign));
+  const cv=vendas.filter(v=>withinPeriod(dateOf(v)) && (activeCampaign==='Geral'||v.campanha===activeCampaign));
+  const ck=campaignKpis.filter(r=>withinPeriod(String(r.data).slice(0,10)) && (activeCampaign==='Geral'||r.campanha===activeCampaign));
   const pk=kpisProsp.filter(r=>monthOf(r.data)===selectedMonth);
   const revenue=sum(cv,'valor'),sales=cv.length,leads=sum(ck,'leads_recebidos');
   const contacted=sum(ck,'leads_contatados'),replied=sum(ck,'em_conversa'),proposals=sum(ck,'proposta_enviada');
@@ -41,8 +49,8 @@ export default function TabRelatoriosComTexto({campaignKpis=[],kpisProsp=[],vend
   const prospectados=sum(pk,'prospectados'),prospContacted=sum(pk,'contatados'),prospReplied=sum(pk,'responderam');
   const meetings=sum(pk,'reuniao_agendada'),converted=sum(pk,'convertido');
   const copyText=section==='commercial'
-    ? `RELATÓRIO COMERCIAL — ${viewLabel}\n${titleMonth(selectedMonth)} · ${activeCampaign}\nLeads recebidos: ${leads}\nContatados: ${contacted}\nResponderam: ${replied}\nFUPs realizados: ${fups}\nFUPs respondidos: ${fupsReplied}\nPropostas: ${proposals}\nDesqualificados: ${sum(ck,'leads_desqualificados')}\nVendas: ${sales}\nFaturamento: ${money(revenue)}\nTicket médio: ${money(sales?revenue/sales:0)}\nTaxa de resposta: ${percent(replied,contacted)}\nTaxa de conversão: ${percent(conversionSales,leads)}\nFechamento sobre propostas: ${percent(conversionSales,proposals)}`
-    : `RELATÓRIO DE PROSPECÇÃO — ${viewLabel}\n${titleMonth(selectedMonth)}\nProspectados: ${prospectados}\nContatados: ${prospContacted}\nResponderam: ${prospReplied}\nReuniões agendadas: ${meetings}\nConvertidos: ${converted}\nTaxa de resposta: ${percent(prospReplied,prospContacted)}\nConversão: ${percent(converted,prospectados)}`;
+    ? `RELATÓRIO COMERCIAL — ${viewLabel}\n${periodLabel} · ${activeCampaign}\nLeads recebidos: ${leads}\nContatados: ${contacted}\nResponderam: ${replied}\nFUPs realizados: ${fups}\nFUPs respondidos: ${fupsReplied}\nPropostas: ${proposals}\nDesqualificados: ${sum(ck,'leads_desqualificados')}\nVendas: ${sales}\nFaturamento: ${money(revenue)}\nTicket médio: ${money(sales?revenue/sales:0)}\nTaxa de resposta: ${percent(replied,contacted)}\nTaxa de conversão: ${percent(conversionSales,leads)}\nFechamento sobre propostas: ${percent(conversionSales,proposals)}`
+    : `RELATÓRIO DE PROSPECÇÃO — ${viewLabel}\n${periodLabel}\nProspectados: ${prospectados}\nContatados: ${prospContacted}\nResponderam: ${prospReplied}\nReuniões agendadas: ${meetings}\nConvertidos: ${converted}\nTaxa de resposta: ${percent(prospReplied,prospContacted)}\nConversão: ${percent(converted,prospectados)}`;
   const fieldStyle={background:T.surface,border:`1px solid ${T.border}`,color:T.text,borderRadius:9,padding:'10px 12px',maxWidth:'100%'};
   const grid={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(175px,1fr))',gap:10};
   const rows=section==='commercial'?[
@@ -62,7 +70,10 @@ export default function TabRelatoriosComTexto({campaignKpis=[],kpisProsp=[],vend
       {[['commercial','Relatório Comercial'],['prospecting','Relatório de Prospecção']].map(([key,label])=><button key={key} onClick={()=>{setSection(key);setCopied(false)}} style={{...fieldStyle,cursor:'pointer',background:section===key?T.accent:T.surface,color:section===key?'#08111B':T.text,fontWeight:800}}>{label}</button>)}
     </div>
     <div style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'end'}}>
-      <label style={{display:'grid',gap:6,color:T.textSec,fontSize:12}}>Período<select value={selectedMonth} onChange={e=>setMonth(e.target.value)} style={fieldStyle}>{months.map(m=><option key={m} value={m}>{titleMonth(m)}</option>)}</select></label>
+      <label style={{display:'grid',gap:6,color:T.textSec,fontSize:12}}>Mês de referência<select value={selectedMonth} onChange={e=>{setMonth(e.target.value);setDateFrom('');setDateTo('')}} style={fieldStyle}>{months.map(m=><option key={m} value={m}>{titleMonth(m)}</option>)}</select></label>
+      <label style={{display:'grid',gap:6,color:T.textSec,fontSize:12}}>Data inicial<input type="date" value={dateFrom} max={dateTo||undefined} onChange={e=>setDateFrom(e.target.value)} style={{...fieldStyle,colorScheme:'dark'}}/></label>
+      <label style={{display:'grid',gap:6,color:T.textSec,fontSize:12}}>Data final<input type="date" value={dateTo} min={dateFrom||undefined} onChange={e=>setDateTo(e.target.value)} style={{...fieldStyle,colorScheme:'dark'}}/></label>
+      {(dateFrom||dateTo)&&<button onClick={()=>{setDateFrom('');setDateTo('')}} style={{...fieldStyle,cursor:'pointer'}}>Limpar datas</button>}
       {section==='commercial'&&<label style={{display:'grid',gap:6,color:T.textSec,fontSize:12}}>Campanha<select value={activeCampaign} onChange={e=>setCampaign(e.target.value)} style={fieldStyle}><option value="Geral">Geral</option>{campaigns.map(v=><option key={v} value={v}>{v}</option>)}</select></label>}
       <div style={{fontSize:12,color:T.textMuted}}>Visualizando: {viewLabel}</div>
     </div>
