@@ -1,96 +1,75 @@
 import { useMemo, useState } from 'react';
-import TabRelatorios from './TabRelatorios';
 import { T } from '../lib/theme';
 
-const brl = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const n = (v) => Number(v || 0);
+const money = v => Number(v || 0).toLocaleString('pt-BR', {style:'currency',currency:'BRL'});
+const num = v => Number(v || 0);
+const percent = (a,b) => b > 0 ? (100*a/b).toFixed(1)+'%' : '—';
+const dateOf = v => String(v?.data_venda || v?.dataVenda || '').slice(0,10);
+const monthOf = s => String(s || '').slice(0,7);
+const titleMonth = s => new Date(s+'-01T12:00:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+function Card({label,value,sub}) {return <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:11,padding:17,minWidth:0}}>
+  <div style={{color:T.textSec,fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:'.04em'}}>{label}</div>
+  <div style={{fontSize:25,fontWeight:900,color:T.text,marginTop:10,overflowWrap:'anywhere'}}>{value}</div>
+  {sub&&<div style={{fontSize:11,color:T.textMuted,marginTop:7}}>{sub}</div>}
+</div>}
+const sum = (rows,key) => rows.reduce((total,row)=>total+num(row[key]),0);
+const reportCopy = async text => {
+  try {await navigator.clipboard.writeText(text)} catch {
+    const el=document.createElement('textarea');el.value=text;document.body.appendChild(el);el.select();document.execCommand('copy');el.remove();
+  }
+};
 
-export default function TabRelatoriosComTexto(props) {
-  const { kpis = [], kpisProsp = [], vendas = [], viewLabel = 'Meus dados' } = props;
-  const [copied, setCopied] = useState(false);
-  const [showWhatsAppReport, setShowWhatsAppReport] = useState(false);
-
-  const reportText = useMemo(() => {
-    const now = new Date();
-    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const kMes = kpis.filter((k) => String(k.data || '').startsWith(ym));
-    const pMes = kpisProsp.filter((k) => String(k.data || '').startsWith(ym));
-    const vMes = vendas.filter((v) => String(v.data_venda || v.dataVenda || '').startsWith(ym));
-
-    const comercial = kMes.reduce((a, k) => ({
-      leads: a.leads + n(k.leads_novos),
-      abordagens: a.abordagens + n(k.abordagem),
-      fups: a.fups + n(k.fup),
-      negociacao: a.negociacao + n(k.em_negociacao),
-      fechados: a.fechados + n(k.fechados),
-    }), { leads: 0, abordagens: 0, fups: 0, negociacao: 0, fechados: 0 });
-
-    const prosp = pMes.reduce((a, k) => ({
-      prospectados: a.prospectados + n(k.prospectados),
-      contatados: a.contatados + n(k.contatados),
-      responderam: a.responderam + n(k.responderam),
-      reunioes: a.reunioes + n(k.reuniao_agendada),
-      convertidos: a.convertidos + n(k.convertido),
-    }), { prospectados: 0, contatados: 0, responderam: 0, reunioes: 0, convertidos: 0 });
-
-    const receita = vMes.reduce((s, v) => s + n(v.valor), 0);
-    const comissao = vMes.reduce((s, v) => s + n(v.comissao_valor), 0);
-    const ticket = vMes.length ? receita / vMes.length : 0;
-    const taxaResposta = prosp.contatados ? (prosp.responderam / prosp.contatados) * 100 : 0;
-    const taxaConversao = prosp.prospectados ? (prosp.convertidos / prosp.prospectados) * 100 : 0;
-
-    const porOrigem = {};
-    const porProduto = {};
-    vMes.forEach((v) => {
-      const origem = v.origem === 'Tráfego' || v.origem === 'Trafego' ? 'Tráfego - Clint' : (v.origem || 'Não informado');
-      const produto = v.produto || 'Não informado';
-      porOrigem[origem] = (porOrigem[origem] || 0) + 1;
-      porProduto[produto] = (porProduto[produto] || 0) + 1;
-    });
-    const origens = Object.entries(porOrigem).sort((a,b)=>b[1]-a[1]).map(([o,q]) => `• ${o}: ${q}`).join('\n');
-    const produtos = Object.entries(porProduto).sort((a,b)=>b[1]-a[1]).map(([p,q]) => `• ${p}: ${q}`).join('\n');
-
-    return `📊 *RELATÓRIO COMERCIAL — ${viewLabel}*\nPeríodo: ${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}\n\n*COMERCIAL*\n• Leads novos: ${comercial.leads}\n• Abordagens: ${comercial.abordagens}\n• Follow-ups: ${comercial.fups}\n• Em negociação: ${comercial.negociacao}\n• Fechados: ${comercial.fechados}\n\n*PROSPECÇÃO*\n• Prospectados: ${prosp.prospectados}\n• Contatados: ${prosp.contatados}\n• Responderam: ${prosp.responderam}\n• Reuniões agendadas: ${prosp.reunioes}\n• Convertidos: ${prosp.convertidos}\n• Taxa de resposta: ${taxaResposta.toFixed(1)}%\n• Conversão da prospecção: ${taxaConversao.toFixed(1)}%\n\n*VENDAS*\n• Vendas: ${vMes.length}\n• Receita: ${brl(receita)}\n• Comissão: ${brl(comissao)}\n• Ticket médio: ${brl(ticket)}${produtos ? `\n\n*PRODUTOS VENDIDOS*\n${produtos}` : ''}${origens ? `\n\n*VENDAS POR ORIGEM*\n${origens}` : ''}`;
-  }, [kpis, kpisProsp, vendas, viewLabel]);
-
-  const copyReport = async () => {
-    try {
-      await navigator.clipboard.writeText(reportText);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      const ta = document.createElement('textarea');
-      ta.value = reportText;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    }
-  };
-
+export default function TabRelatoriosComTexto({campaignKpis=[],kpisProsp=[],vendas=[],viewLabel='Meus dados'}) {
+  const [section,setSection]=useState('commercial');
+  const [month,setMonth]=useState('');
+  const [campaign,setCampaign]=useState('Geral');
+  const [copied,setCopied]=useState(false);
+  const months=useMemo(()=>[...new Set([
+    ...campaignKpis.map(r=>monthOf(r.data)),...kpisProsp.map(r=>monthOf(r.data)),
+    ...vendas.map(v=>monthOf(dateOf(v))),new Date().toISOString().slice(0,7)
+  ].filter(Boolean))].sort().reverse(),[campaignKpis,kpisProsp,vendas]);
+  const selectedMonth=months.includes(month)?month:months[0];
+  const campaigns=[...new Set(campaignKpis.map(r=>r.campanha).filter(Boolean))].sort();
+  const activeCampaign=campaign==='Geral'||campaigns.includes(campaign)?campaign:'Geral';
+  const cv=vendas.filter(v=>monthOf(dateOf(v))===selectedMonth && (activeCampaign==='Geral'||v.campanha===activeCampaign));
+  const ck=campaignKpis.filter(r=>monthOf(r.data)===selectedMonth && (activeCampaign==='Geral'||r.campanha===activeCampaign));
+  const pk=kpisProsp.filter(r=>monthOf(r.data)===selectedMonth);
+  const revenue=sum(cv,'valor'),sales=cv.length,leads=sum(ck,'leads_recebidos');
+  const contacted=sum(ck,'leads_contatados'),replied=sum(ck,'em_conversa'),proposals=sum(ck,'proposta_enviada');
+  const fups=sum(ck,'fups_realizados'),fupsReplied=sum(ck,'fups_respondidos');
+  const conversionSales=activeCampaign==='Geral'?cv.filter(v=>campaigns.includes(v.campanha)).length:sales;
+  const prospectados=sum(pk,'prospectados'),prospContacted=sum(pk,'contatados'),prospReplied=sum(pk,'responderam');
+  const meetings=sum(pk,'reuniao_agendada'),converted=sum(pk,'convertido');
+  const copyText=section==='commercial'
+    ? `RELATÓRIO COMERCIAL — ${viewLabel}\n${titleMonth(selectedMonth)} · ${activeCampaign}\nLeads recebidos: ${leads}\nContatados: ${contacted}\nResponderam: ${replied}\nFUPs realizados: ${fups}\nFUPs respondidos: ${fupsReplied}\nPropostas: ${proposals}\nDesqualificados: ${sum(ck,'leads_desqualificados')}\nVendas: ${sales}\nFaturamento: ${money(revenue)}\nTicket médio: ${money(sales?revenue/sales:0)}\nTaxa de resposta: ${percent(replied,contacted)}\nTaxa de conversão: ${percent(conversionSales,leads)}\nFechamento sobre propostas: ${percent(conversionSales,proposals)}`
+    : `RELATÓRIO DE PROSPECÇÃO — ${viewLabel}\n${titleMonth(selectedMonth)}\nProspectados: ${prospectados}\nContatados: ${prospContacted}\nResponderam: ${prospReplied}\nReuniões agendadas: ${meetings}\nConvertidos: ${converted}\nTaxa de resposta: ${percent(prospReplied,prospContacted)}\nConversão: ${percent(converted,prospectados)}`;
+  const fieldStyle={background:T.surface,border:`1px solid ${T.border}`,color:T.text,borderRadius:9,padding:'10px 12px',maxWidth:'100%'};
+  const grid={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(175px,1fr))',gap:10};
+  const rows=section==='commercial'?[
+    ['Leads recebidos',leads],['Contatados',contacted],['Em conversa / responderam',replied],
+    ['FUPs realizados',fups],['FUPs respondidos',fupsReplied],['Reuniões',sum(ck,'reuniao_agendamento')],
+    ['Propostas enviadas',proposals],['Leads desqualificados',sum(ck,'leads_desqualificados')],
+    ['Vendas',sales],['Faturamento',money(revenue)],['Ticket médio',money(sales?revenue/sales:0)],
+    ['Taxa de resposta',percent(replied,contacted)],['Taxa de conversão',percent(conversionSales,leads)],
+    ['Fechamento / propostas',percent(conversionSales,proposals)],['Resposta dos FUPs',percent(fupsReplied,fups)]
+  ]:[
+    ['Prospectados',prospectados],['Contatados',prospContacted],['Responderam',prospReplied],
+    ['Reuniões agendadas',meetings],['Convertidos',converted],
+    ['Taxa de resposta',percent(prospReplied,prospContacted)],['Conversão da prospecção',percent(converted,prospectados)]
+  ];
   return <div style={{display:'flex',flexDirection:'column',gap:18}}>
-    <div style={{display:'flex',justifyContent:'flex-end'}}>
-      <button
-        onClick={() => setShowWhatsAppReport((v) => !v)}
-        style={{background:T.accent,color:'#08111B',border:0,borderRadius:9,padding:'10px 14px',fontWeight:800,cursor:'pointer'}}
-      >
-        {showWhatsAppReport ? 'Ocultar relatório para WhatsApp' : 'Gerar relatório para WhatsApp'}
-      </button>
+    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+      {[['commercial','Relatório Comercial'],['prospecting','Relatório de Prospecção']].map(([key,label])=><button key={key} onClick={()=>{setSection(key);setCopied(false)}} style={{...fieldStyle,cursor:'pointer',background:section===key?T.accent:T.surface,color:section===key?'#08111B':T.text,fontWeight:800}}>{label}</button>)}
     </div>
-
-    {showWhatsAppReport && <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,padding:18}}>
-      <div style={{display:'flex',justifyContent:'space-between',gap:14,alignItems:'center',flexWrap:'wrap'}}>
-        <div>
-          <div style={{fontSize:15,fontWeight:800,color:T.text}}>Relatório para WhatsApp</div>
-          <div style={{fontSize:12,color:T.textSec,marginTop:4}}>Resumo do mês atual pronto para copiar e enviar.</div>
-        </div>
-        <button onClick={copyReport} style={{background:copied?T.success:T.accent,color:'#08111B',border:0,borderRadius:9,padding:'10px 14px',fontWeight:800,cursor:'pointer'}}>{copied?'Copiado!':'Copiar relatório'}</button>
-      </div>
-      <pre style={{whiteSpace:'pre-wrap',fontFamily:'inherit',fontSize:12,lineHeight:1.55,color:T.textSec,background:T.bg,border:`1px solid ${T.border}`,borderRadius:10,padding:14,margin:'14px 0 0'}}>{reportText}</pre>
-    </div>}
-
-    <TabRelatorios {...props} />
+    <div style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'end'}}>
+      <label style={{display:'grid',gap:6,color:T.textSec,fontSize:12}}>Período<select value={selectedMonth} onChange={e=>setMonth(e.target.value)} style={fieldStyle}>{months.map(m=><option key={m} value={m}>{titleMonth(m)}</option>)}</select></label>
+      {section==='commercial'&&<label style={{display:'grid',gap:6,color:T.textSec,fontSize:12}}>Campanha<select value={activeCampaign} onChange={e=>setCampaign(e.target.value)} style={fieldStyle}><option value="Geral">Geral</option>{campaigns.map(v=><option key={v} value={v}>{v}</option>)}</select></label>}
+      <div style={{fontSize:12,color:T.textMuted}}>Visualizando: {viewLabel}</div>
+    </div>
+    <div style={grid}>{rows.map(([label,value])=><Card key={label} label={label} value={value}/>)}</div>
+    <div style={{display:'flex',gap:12,alignItems:'center',flexWrap:'wrap'}}>
+      <button onClick={async()=>{await reportCopy(copyText);setCopied(true)}} style={{...fieldStyle,background:T.accent,color:'#08111B',fontWeight:800,cursor:'pointer'}}>{copied?'Copiado!':'Copiar relatório para WhatsApp'}</button>
+      <span style={{fontSize:11,color:T.textMuted}}>Indicadores comerciais vêm dos KPIs das campanhas; vendas e faturamento vêm dos registros de Vendas. Prospecção é independente.</span>
+    </div>
   </div>;
 }
