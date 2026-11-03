@@ -41,7 +41,7 @@ export default function TabRelatoriosComTexto({campaignKpis=[],kpisProsp=[],vend
   const activeCampaign=campaign==='Geral'||campaigns.includes(campaign)?campaign:'Geral';
   const cv=vendas.filter(v=>withinPeriod(dateOf(v)) && (activeCampaign==='Geral'||v.campanha===activeCampaign));
   const ck=campaignKpis.filter(r=>withinPeriod(String(r.data).slice(0,10)) && (activeCampaign==='Geral'||r.campanha===activeCampaign));
-  const pk=kpisProsp.filter(r=>monthOf(r.data)===selectedMonth);
+  const pk=kpisProsp.filter(r=>withinPeriod(String(r.data).slice(0,10)));
   const revenue=sum(cv,'valor'),sales=cv.length,leads=sum(ck,'leads_recebidos');
   const contacted=sum(ck,'leads_contatados'),replied=sum(ck,'em_conversa'),proposals=sum(ck,'proposta_enviada');
   const fups=sum(ck,'fups_realizados'),fupsReplied=sum(ck,'fups_respondidos');
