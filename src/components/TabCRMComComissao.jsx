@@ -34,7 +34,7 @@ export default function TabCRMComComissao(props) {
     ['Comissão do período',brl(resumo.comissaoMes),`${resumo.vendasMes} venda${resumo.vendasMes===1?'':'s'} no período`],
     ['Faturamento do período',brl(resumo.faturamentoMes),'Vendas registradas no período'],
     ['Média de comissão por venda',brl(resumo.media),'Média do período selecionado'],
-    ['Comissão acumulada geral',brl(resumo.comissaoTotal),'Histórico completo, sem apagar meses anteriores'],
+    ...(selectedMonth === 'todos' ? [['Comissão acumulada geral',brl(resumo.comissaoTotal),'Histórico completo de todos os meses']] : []),
   ];
 
   return (
