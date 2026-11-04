@@ -61,19 +61,17 @@ function Label({ children }) {
   return <div style={{ fontSize:10, fontWeight:800, letterSpacing:'.09em', textTransform:'uppercase', color:T.textSec }}>{children}</div>;
 }
 function KpiCard({ label, value, editable, onChange }) {
-  return <div style={{ background:T.surface,border:`1px solid ${editable ? T.borderMid : T.border}`,borderRadius:10,padding:'15px 16px',minHeight:100 }}>
+  const control={width:39,height:43,flexShrink:0,background:T.surfaceHov,border:`1px solid ${T.borderMid}`,borderRadius:8,color:T.text,fontSize:23,fontWeight:800,cursor:'pointer',touchAction:'manipulation'};
+  return <div style={{background:T.surface,border:`1px solid ${editable?T.borderMid:T.border}`,borderRadius:10,padding:'15px 16px',minHeight:100}}>
     <Label>{label}</Label>
     {editable ? (
-      <input
-        type="number"
-        min="0"
-        value={value}
-        onChange={e=>onChange(Math.max(0, parseInt(e.target.value) || 0))}
-        style={{marginTop:10,width:'100%',boxSizing:'border-box',background:T.bg,border:`1px solid ${T.border}`,borderRadius:7,outline:'none',color:T.text,fontSize:28,fontWeight:900,padding:'7px 9px'}}
-      />
-    ) : (
-      <div style={{marginTop:10,fontSize:28,fontWeight:900,color:T.text}}>{value}</div>
-    )}
+      <div style={{display:'flex',alignItems:'center',gap:8,marginTop:10}}>
+        <button type="button" aria-label={`Diminuir ${label}`} disabled={Number(value)<=0} onClick={()=>onChange(Math.max(0,Number(value||0)-1))} style={{...control,opacity:Number(value)<=0?.4:1}}>−</button>
+        <input type="number" min="0" value={value} aria-label={label} onChange={e=>onChange(Math.max(0,parseInt(e.target.value,10)||0))}
+          style={{width:'100%',minWidth:0,boxSizing:'border-box',background:T.bg,border:`1px solid ${T.border}`,borderRadius:7,outline:'none',color:T.text,fontSize:25,fontWeight:900,padding:'6px 5px',textAlign:'center'}} />
+        <button type="button" aria-label={`Aumentar ${label}`} onClick={()=>onChange(Number(value||0)+1)} style={control}>+</button>
+      </div>
+    ) : <div style={{marginTop:10,fontSize:28,fontWeight:900,color:T.text}}>{value}</div>}
   </div>;
 }
 
