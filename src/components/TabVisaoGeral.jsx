@@ -66,7 +66,7 @@ function KpiCard({ label, value, editable, onChange }) {
     <Label>{label}</Label>
     {editable ? (
       <div style={{display:'flex',alignItems:'center',gap:8,marginTop:10}}>
-        <button type="button" aria-label={`Diminuir ${label}`} disabled={Number(value)<=0} onClick={()=>onChange(Math.max(0,Number(value||0)-1))} style={{...control,opacity:Number(value)<=0?.4:1}}>−</button>
+        <button type="button" aria-label={`Diminuir ${label}`} disabled={Number(value)<=0} onClick={()=>onChange(Math.max(0,Number(value||0)-1))} style={{...control,opacity:Number(value) <= 0 ? 0.4 : 1}}>−</button>
         <input type="number" min="0" value={value} aria-label={label} onChange={e=>onChange(Math.max(0,parseInt(e.target.value,10)||0))}
           style={{width:'100%',minWidth:0,boxSizing:'border-box',background:T.bg,border:`1px solid ${T.border}`,borderRadius:7,outline:'none',color:T.text,fontSize:25,fontWeight:900,padding:'6px 5px',textAlign:'center'}} />
         <button type="button" aria-label={`Aumentar ${label}`} onClick={()=>onChange(Number(value||0)+1)} style={control}>+</button>
@@ -226,7 +226,7 @@ export default function TabVisaoGeral({ campaignKpis = [], vendas = [], readOnly
 
     <div>
       <div style={{fontSize:11,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:T.textSec,marginBottom:12}}>KPIs operacionais · {campaign}</div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:10}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,220px),1fr))',gap:10}}>
         {Object.entries(KPI_LABELS).map(([k,label])=><KpiCard key={k} label={label} value={display[k]} editable={editable} onChange={v=>setCurrent(p=>({...p,[k]:v}))}/>)}
       </div>
       {editable && <div style={{display:'flex',gap:10,alignItems:'center',marginTop:12,flexWrap:'wrap'}}>
