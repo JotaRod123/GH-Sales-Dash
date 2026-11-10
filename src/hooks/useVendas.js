@@ -40,13 +40,21 @@ const normalizeFetched = (row) => ({ ...row, origem: normalizeOrigem(row.origem)
 export function useVendas(userId, accessToken) {
   const [vendas, setVendas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   const fetchVendas = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
-    const { data } = await supabase.from('vendas').select('*').eq('user_id', userId).order('data_venda', { ascending: true });
-    setVendas((data || []).map(normalizeFetched));
-    setLoading(false);
+    try {
+      const { data, error } = await supabase.from('vendas').select('*').eq('user_id', userId).order('data_venda', { ascending: true });
+      if (error) throw error;
+      setVendas((data || []).map(normalizeFetched));
+      setLoadError('');
+    } catch (error) {
+      setLoadError(error?.message || 'Falha ao carregar as vendas.');
+    } finally {
+      setLoading(false);
+    }
   }, [userId]);
 
   useEffect(() => { fetchVendas(); }, [fetchVendas]);
@@ -129,7 +137,7 @@ export function useVendas(userId, accessToken) {
     return { error };
   };
 
-  return { vendas, loading, addVenda, updateVenda, deleteVenda, refetch: fetchVendas };
+  return { vendas, loading, loadError, addVenda, updateVenda, deleteVenda, refetch: fetchVendas };
 }
 
 export function useTeamVendas(enabled) {
