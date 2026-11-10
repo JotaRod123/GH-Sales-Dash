@@ -10,7 +10,7 @@ const currentMonth = () => {
 const monthTitle = ym => new Date(ym+'-01T12:00:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
 
 export default function TabCRMComComissao(props) {
-  const { vendas = [] } = props;
+  const { vendas = [], loadingVendas = false, loadErrorVendas = '', retryVendas } = props;
   const [selectedMonth,setSelectedMonth] = useState(currentMonth);
   const months = useMemo(() => [...new Set([
     currentMonth(),
@@ -63,6 +63,11 @@ export default function TabCRMComComissao(props) {
           ))}
         </div>
       </div>
+      {loadingVendas && <div role="status" style={{padding:13,color:T.textSec,background:T.surface,borderRadius:9}}>Carregando histórico de vendas…</div>}
+      {loadErrorVendas && <div role="alert" style={{padding:14,color:'#ff9c9c',background:T.surface,border:'1px solid #8d4444',borderRadius:9,display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+        Não foi possível atualizar as vendas: {loadErrorVendas}. Os registros anteriores não foram apagados.
+        {retryVendas && <button type="button" onClick={retryVendas} style={{background:T.accent,color:'#08111B',padding:'8px 12px',border:0,borderRadius:7,fontWeight:800,cursor:'pointer'}}>Tentar novamente</button>}
+      </div>}
       <TabCRM {...props} vendas={vendasPeriodo} />
     </div>
   );
