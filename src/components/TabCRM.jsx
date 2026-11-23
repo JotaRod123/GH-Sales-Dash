@@ -166,6 +166,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
   const [errors, setErrors] = useState({});
   const [editVenda, setEditVenda] = useState(null);
   const [editErrors, setEditErrors] = useState({});
+  const [editSaving, setEditSaving] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null);
   const [fFrom, setFFrom] = useState('');
   const [fTo, setFTo] = useState('');
@@ -201,13 +202,28 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
   };
 
   const handleEditSave = async () => {
+    if (!editVenda || editSaving) return;
     const errs = validateVenda(editVenda);
-    if (Object.keys(errs).length) { setEditErrors(errs); return; }
+    if (Object.keys(errs).length) {
+      setEditErrors({...errs, save: 'Corrija os campos destacados para salvar a venda.'});
+      return;
+    }
     const produto = editVenda.produto === 'Outros' ? editVenda.produtoOutros : editVenda.produto;
-    const result = await updateVenda(editVenda.id, { ...editVenda, produto });
-    if (result?.error) { setEditErrors({save:result.error.message || 'Não foi possível salvar a edição.'}); return; }
-    setEditVenda(null);
+    setEditSaving(true);
     setEditErrors({});
+    try {
+      const result = await updateVenda(editVenda.id, { ...editVenda, produto });
+      if (result?.error || !result?.data) {
+        setEditErrors({save:result?.error?.message || 'O banco não confirmou a edição.'});
+        return;
+      }
+      setEditVenda(null);
+      setEditErrors({});
+    } catch (error) {
+      setEditErrors({save:error?.message || 'Erro inesperado ao salvar a edição.'});
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   const shaped = vendas.map(toFormShape);
@@ -348,8 +364,8 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
           {editErrors.save && <div role="alert" style={{color:T.danger,marginBottom:12}}>{editErrors.save}</div>}
           <Textarea label="Observacoes" value={editVenda.observacao} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { observacao: v }))} />
           <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
-            <Btn variant="ghost" onClick={() => setEditVenda(null)}>Cancelar</Btn>
-            <Btn onClick={handleEditSave}>Salvar</Btn>
+            <Btn variant="ghost" disabled={editSaving} onClick={() => setEditVenda(null)}>Cancelar</Btn>
+            <Btn onClick={handleEditSave} disabled={editSaving}>{editSaving ? 'Salvando...' : 'Salvar alterações'}</Btn>
           </div>
         </Modal>
       )}
