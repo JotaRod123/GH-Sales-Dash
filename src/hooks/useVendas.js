@@ -21,12 +21,12 @@ const normalizeVenda = (v) => {
   return {
     nome: v.nome,
     telefone: normalizePhone(v.telefone || ''),
-    data_venda: v.data_venda || v.dataVenda,
+    data_venda: v.dataVenda || v.data_venda,
     origem,
     produto: v.produto,
     campanha: v.campanha || null,
-    data_entrada_lead: v.data_entrada_lead || v.dataEntradaLead || null,
-    fups_ate_compra: v.fups_ate_compra === '' || v.fups_ate_compra == null ? (v.fupsAteCompra === '' || v.fupsAteCompra == null ? null : Number(v.fupsAteCompra)) : Number(v.fups_ate_compra),
+    data_entrada_lead: v.dataEntradaLead !== undefined ? (v.dataEntradaLead || null) : (v.data_entrada_lead || null),
+    fups_ate_compra: v.fupsAteCompra !== undefined ? (v.fupsAteCompra === '' || v.fupsAteCompra == null ? null : Number(v.fupsAteCompra)) : (v.fups_ate_compra === '' || v.fups_ate_compra == null ? null : Number(v.fups_ate_compra)),
     valor,
     observacao: v.observacao || '',
     prospect_id: v.prospect_id || v.prospectId || null,
@@ -35,7 +35,7 @@ const normalizeVenda = (v) => {
     dentro_evento: dentroEvento,
     comissao_percentual: comissao.percentual,
     comissao_valor: comissao.total,
-    comissao_futura_vencimento: comissao.parcelada ? seisMesesDepois(v.data_venda || v.dataVenda) : null,
+    comissao_futura_vencimento: comissao.parcelada ? seisMesesDepois(v.dataVenda || v.data_venda) : null,
     comissao_futura_recebida_em: comissao.parcelada ? (recebida || null) : null,
   };
 };
@@ -120,18 +120,44 @@ export function useVendas(userId, accessToken) {
   };
 
   const updateVenda = async (id, v) => {
-    const current = vendas.find((item) => item.id === id) || {};
-    const payload = normalizeVenda({ ...current, ...v });
-    const previous = vendas;
-    setVendas((prev) => prev.map((item) => item.id === id ? { ...item, ...payload } : item));
-
-    const { data, error } = await supabase.from('vendas').update(payload).eq('id', id).eq('user_id', userId).select('*').single();
-    if (error) {
-      setVendas(previous);
-      return { error };
+    if (!userId || !id) return {error:{message:'Usuário ou venda inválidos. Entre novamente.'}};
+    const current = vendas.find(item => item.id === id);
+    if (!current) return {error:{message:'Venda não encontrada na lista. Atualize a página e tente novamente.'}};
+    const payload = normalizeVenda({...current, ...v});
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    try {
+      // getSession oferece token atualizado quando a sessão foi renovada pelo Supabase.
+      const {data: authData, error: authError} = await supabase.auth.getSession();
+      const token = authData?.session?.access_token;
+      if (authError || !token) throw new Error('Sessão expirada. Faça login novamente para editar a venda.');
+      const response = await window.fetch(
+        `${SUPABASE_URL}/rest/v1/vendas?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&select=*`,
+        {
+          method: 'PATCH',
+          signal: controller.signal,
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+      const body = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(body?.message || body?.details || `Falha ao salvar: HTTP ${response.status}`);
+      const saved = Array.isArray(body) ? body[0] : body;
+      if (!saved?.id) throw new Error('O banco não confirmou a alteração. Verifique as permissões e tente novamente.');
+      setVendas(prev => prev.map(item => item.id === id ? normalizeFetched(saved) : item));
+      return {data:normalizeFetched(saved),error:null};
+    } catch (error) {
+      return {error:{message:error?.name === 'AbortError'
+        ? 'O banco demorou a responder. Verifique se a edição foi aplicada antes de tentar novamente.'
+        : (error?.message || 'Não foi possível salvar a venda.')}};
+    } finally {
+      clearTimeout(timeout);
     }
-    setVendas((prev) => prev.map((item) => item.id === id ? normalizeFetched(data) : item));
-    return { error: null };
   };
 
   const deleteVenda = async (id) => {
