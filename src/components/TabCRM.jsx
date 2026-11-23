@@ -1,6 +1,7 @@
 import { CAMPAIGNS } from '../lib/campaigns';
 import { useState } from 'react';
 import { T } from '../lib/theme';
+import { FORMAS_PAGAMENTO, calcularComissao } from '../lib/comissoes';
 
 const PRODUTOS = ['Scale or Die','Monsterday','Scale Society','Blackmonster','MedMaster Plan','Health Club','Health Society','GH Master','MFA','Outros'];
 const ORIGENS = ['Trafego','Evento','Prospeccao','Indicacao'];
@@ -46,6 +47,8 @@ const toFormShape = (row) => {
     dataEntradaLead: row.data_entrada_lead || '',
     fupsAteCompra: row.fups_ate_compra ?? '',
     origem: row.origem,
+    condicaoPagamento: row.condicao_pagamento || '',
+    comissao_futura_recebida_em: row.comissao_futura_recebida_em || null,
     produto: isProdutoLista ? row.produto : 'Outros',
     campanha: row.campanha || '',
     produtoOutros: isProdutoLista ? '' : row.produto,
@@ -54,7 +57,7 @@ const toFormShape = (row) => {
   };
 };
 
-const EMPTY = { nome: '', telefone: '', dataVenda: today(), dataEntradaLead: '', fupsAteCompra: '', origem: '', produto: '', campanha: '', produtoOutros: '', valor: '', observacao: '' };
+const EMPTY = { nome: '', telefone: '', dataVenda: today(), dataEntradaLead: '', fupsAteCompra: '', origem: '', condicaoPagamento: '', produto: '', campanha: '', produtoOutros: '', valor: '', observacao: '' };
 
 function Card({ children, style = {} }) {
   return <div style={Object.assign({ background: T.surface, border: '1px solid ' + T.border, borderRadius: 10, padding: '20px 24px' }, style)}>{children}</div>;
@@ -200,7 +203,8 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
     const errs = validateVenda(editVenda);
     if (Object.keys(errs).length) { setEditErrors(errs); return; }
     const produto = editVenda.produto === 'Outros' ? editVenda.produtoOutros : editVenda.produto;
-    await updateVenda(editVenda.id, { ...editVenda, produto });
+    const result = await updateVenda(editVenda.id, { ...editVenda, produto });
+    if (result?.error) { setEditErrors({save:result.error.message || 'Não foi possível salvar a edição.'}); return; }
     setEditVenda(null);
     setEditErrors({});
   };
@@ -237,6 +241,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
               <Input label="Entrada do lead (opcional)" type="date" value={form.dataEntradaLead} onChange={(v) => sf('dataEntradaLead', v)} error={errors.dataEntradaLead} />
               <Input label="FUPs até comprar (opcional)" type="number" value={form.fupsAteCompra} onChange={(v) => sf('fupsAteCompra', v)} error={errors.fupsAteCompra} placeholder="Ex.: 3" />
               <Select label="Origem" value={form.origem || 'Selecione'} onChange={(v) => sf('origem', v)} options={['Selecione', ...ORIGENS]} error={errors.origem} />
+              <Select label="Forma de pagamento" value={form.condicaoPagamento} onChange={(v)=>sf('condicaoPagamento',v)} options={FORMAS_PAGAMENTO} />
               <Select label="Campanha (opcional)" value={form.campanha || ''} onChange={(v) => sf('campanha', v)} options={['', ...CAMPAIGNS]} />
               <Select label="Produto" value={form.produto || 'Selecione'} onChange={(v) => sf('produto', v)} options={['Selecione', ...PRODUTOS]} error={errors.produto} />
               {form.produto === 'Outros' && <Input label="Qual produto?" value={form.produtoOutros} onChange={(v) => sf('produtoOutros', v)} error={errors.produtoOutros} placeholder="Nome do produto" />}
@@ -295,7 +300,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead><tr><TH>Nome</TH><TH>Telefone</TH><TH>Data</TH><TH>Origem</TH><TH>Campanha</TH><TH>Produto</TH><TH>Valor</TH><TH>Observacoes</TH>{!readOnly && <TH></TH>}</tr></thead>
+                <thead><tr><TH>Nome</TH><TH>Telefone</TH><TH>Data</TH><TH>Origem</TH><TH>Campanha</TH><TH>Produto</TH><TH>Pagamento</TH><TH>Valor</TH><TH>Observacoes</TH>{!readOnly && <TH></TH>}</tr></thead>
                 <tbody>
                   {filtered.map((v, i) => (
                     <tr key={v.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid ' + T.border : 'none' }}>
@@ -305,6 +310,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
                       <td style={{ padding: '11px 14px' }}><Pill origem={v.origem} /></td>
                       <td style={{ padding: '11px 14px', color: T.accent, fontWeight: 700, whiteSpace: 'nowrap' }}>{v.campanha || '-'}</td>
                       <td style={{ padding: '11px 14px', color: T.text, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.produto === 'Outros' ? v.produtoOutros : v.produto}</td>
+                      <td style={{ padding: '11px 14px', color: T.textSec, whiteSpace: 'nowrap' }}>{v.condicaoPagamento || 'Não informada'}</td>
                       <td style={{ padding: '11px 14px', color: T.success, fontWeight: 600, whiteSpace: 'nowrap' }}>{formatBRL(v.valor)}</td>
                       <td style={{ padding: '11px 14px', maxWidth: 180 }}><ObsCell texto={v.observacao} /></td>
                       {!readOnly && (
@@ -331,11 +337,14 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
             <Input label="Telefone (opcional)" value={editVenda.telefone} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { telefone: formatPhone(v) }))} />
             <Input label="Data da venda" type="date" value={editVenda.dataVenda} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { dataVenda: v }))} error={editErrors.dataVenda} />
             <Select label="Origem" value={editVenda.origem} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { origem: v }))} options={ORIGENS} error={editErrors.origem} />
+            <Select label="Forma de pagamento" value={editVenda.condicaoPagamento} onChange={(v)=>setEditVenda(p=>({...p,condicaoPagamento:v}))} options={FORMAS_PAGAMENTO} />
             <Select label="Campanha (opcional)" value={editVenda.campanha || ''} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { campanha: v }))} options={['', ...CAMPAIGNS]} />
             <Select label="Produto" value={editVenda.produto} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { produto: v }))} options={PRODUTOS} error={editErrors.produto} />
             {editVenda.produto === 'Outros' && <Input label="Qual produto?" value={editVenda.produtoOutros} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { produtoOutros: v }))} error={editErrors.produtoOutros} />}
             <Input label="Valor (R$)" type="number" value={editVenda.valor} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { valor: v }))} error={editErrors.valor} />
           </div>
+          {editVenda.origem === 'Evento' && <div style={{color:T.textSec,fontSize:12,marginBottom:12}}>Comissão: {formatBRL(calcularComissao({...editVenda,condicao_pagamento:editVenda.condicaoPagamento}).imediata)} imediata{calcularComissao({...editVenda,condicao_pagamento:editVenda.condicaoPagamento}).parcelada?' + '+formatBRL(calcularComissao({...editVenda,condicao_pagamento:editVenda.condicaoPagamento}).futura)+' em 6 meses':''}.</div>}
+          {editErrors.save && <div role="alert" style={{color:T.danger,marginBottom:12}}>{editErrors.save}</div>}
           <Textarea label="Observacoes" value={editVenda.observacao} onChange={(v) => setEditVenda((p) => Object.assign({}, p, { observacao: v }))} />
           <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
             <Btn variant="ghost" onClick={() => setEditVenda(null)}>Cancelar</Btn>
