@@ -4,7 +4,7 @@ import { T } from '../lib/theme';
 import { FORMAS_PAGAMENTO, calcularComissao } from '../lib/comissoes';
 
 const PRODUTOS = ['Scale or Die','Monsterday','Scale Society','Blackmonster','MedMaster Plan','Health Club','Health Society','GH Master','MFA','Outros'];
-const ORIGENS = ['Trafego','Evento','Prospeccao','Indicacao'];
+const ORIGENS = ['Tráfego - Clint','Evento','Prospeccao','Indicacao'];
 
 const formatBRL = (v) => (parseFloat(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const formatDateBR = (s) => { if (!s) return ''; const p = s.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; };
@@ -24,13 +24,14 @@ const ORIGEM_COLORS = {
   'Indicacao': T.kpi.emNegociacao,
 };
 
-const validateVenda = (v) => {
+const validateVenda = (v, requirePayment = false) => {
   const e = {};
   if (!v.nome.trim()) e.nome = 'Obrigatorio';
   if (!v.dataVenda) e.dataVenda = 'Obrigatorio';
   if (v.dataEntradaLead && v.dataVenda && v.dataEntradaLead > v.dataVenda) e.dataEntradaLead = 'Entrada não pode ser depois da venda';
   if (v.fupsAteCompra !== '' && v.fupsAteCompra != null && (!Number.isInteger(Number(v.fupsAteCompra)) || Number(v.fupsAteCompra) < 0)) e.fupsAteCompra = 'Informe um inteiro não negativo';
   if (!v.origem) e.origem = 'Obrigatorio';
+  if (requirePayment && !v.condicaoPagamento) e.condicaoPagamento = 'Selecione a forma de pagamento';
   if (!v.produto || v.produto === 'Selecione') e.produto = 'Obrigatorio';
   if (v.produto === 'Outros' && !v.produtoOutros.trim()) e.produtoOutros = 'Obrigatorio';
   if (!v.valor || isNaN(parseFloat(v.valor))) e.valor = 'Valor numerico obrigatorio';
@@ -107,7 +108,7 @@ function Select({ label, value, onChange, options, error = '', style = {} }) {
       {label && <Label>{label}</Label>}
       <select value={value} onChange={(e) => onChange(e.target.value)} onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
         style={{ background: T.bg, border: '1px solid ' + (error ? T.danger : focus ? T.borderMid : T.border), borderRadius: 6, color: value && value !== 'Selecione' ? T.text : T.textSec, fontSize: 13, padding: '8px 11px', outline: 'none', width: '100%', boxSizing: 'border-box', cursor: 'pointer' }}>
-        {options.map((o) => <option key={o} value={o} style={{ background: T.surface }}>{o}</option>)}
+        {options.map((o) => <option key={o} value={o} style={{ background: T.surface }}>{o || 'Selecione'}</option>)}
       </select>
       {error && <span style={{ color: T.danger, fontSize: 11 }}>{error}</span>}
     </div>
@@ -178,7 +179,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
   const sf = (f, v) => setForm((p) => Object.assign({}, p, { [f]: v }));
 
   const handleAdd = async () => {
-    const errs = validateVenda(form);
+    const errs = validateVenda(form, true);
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setSaving(true);
     setSaveError('');
@@ -241,7 +242,7 @@ export default function TabCRM({ vendas, readOnly, viewLabel, addVenda, updateVe
               <Input label="Entrada do lead (opcional)" type="date" value={form.dataEntradaLead} onChange={(v) => sf('dataEntradaLead', v)} error={errors.dataEntradaLead} />
               <Input label="FUPs até comprar (opcional)" type="number" value={form.fupsAteCompra} onChange={(v) => sf('fupsAteCompra', v)} error={errors.fupsAteCompra} placeholder="Ex.: 3" />
               <Select label="Origem" value={form.origem || 'Selecione'} onChange={(v) => sf('origem', v)} options={['Selecione', ...ORIGENS]} error={errors.origem} />
-              <Select label="Forma de pagamento" value={form.condicaoPagamento} onChange={(v)=>sf('condicaoPagamento',v)} options={FORMAS_PAGAMENTO} />
+              <Select label="Forma de pagamento" value={form.condicaoPagamento} onChange={(v)=>sf('condicaoPagamento',v)} options={FORMAS_PAGAMENTO} error={errors.condicaoPagamento} />
               <Select label="Campanha (opcional)" value={form.campanha || ''} onChange={(v) => sf('campanha', v)} options={['', ...CAMPAIGNS]} />
               <Select label="Produto" value={form.produto || 'Selecione'} onChange={(v) => sf('produto', v)} options={['Selecione', ...PRODUTOS]} error={errors.produto} />
               {form.produto === 'Outros' && <Input label="Qual produto?" value={form.produtoOutros} onChange={(v) => sf('produtoOutros', v)} error={errors.produtoOutros} placeholder="Nome do produto" />}
