@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
+import { calcularComissao, seisMesesDepois } from '../lib/comissoes';
 
 const normalizeOrigem = (origem) => origem === 'Tráfego' || origem === 'Trafego' ? 'Tráfego - Clint' : origem;
 const normalizePhone = (value = '') => {
@@ -14,7 +15,9 @@ const normalizeVenda = (v) => {
   const valor = Number(v.valor || 0);
   const origem = normalizeOrigem(v.origem);
   const dentroEvento = origem === 'Evento';
-  const percentual = dentroEvento ? 1 : 2.5;
+  const pagamento = v.condicaoPagamento !== undefined ? v.condicaoPagamento : (v.condicao_pagamento || '');
+  const comissao = calcularComissao({...v, origem, condicao_pagamento: pagamento});
+  const recebida = v.comissao_futura_recebida_em !== undefined ? v.comissao_futura_recebida_em : (v.comissaoFuturaRecebidaEm || null);
   return {
     nome: v.nome,
     telefone: normalizePhone(v.telefone || ''),
@@ -28,10 +31,12 @@ const normalizeVenda = (v) => {
     observacao: v.observacao || '',
     prospect_id: v.prospect_id || v.prospectId || null,
     call_id: v.call_id || v.callId || null,
-    condicao_pagamento: v.condicao_pagamento || v.condicaoPagamento || null,
+    condicao_pagamento: pagamento || null,
     dentro_evento: dentroEvento,
-    comissao_percentual: percentual,
-    comissao_valor: valor * percentual / 100,
+    comissao_percentual: comissao.percentual,
+    comissao_valor: comissao.total,
+    comissao_futura_vencimento: comissao.parcelada ? seisMesesDepois(v.data_venda || v.dataVenda) : null,
+    comissao_futura_recebida_em: comissao.parcelada ? (recebida || null) : null,
   };
 };
 
