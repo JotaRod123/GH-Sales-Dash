@@ -37,21 +37,22 @@ export default function TabCRMComComissao(props) {
     .sort((a,b)=>a.detalhes.vencimento.localeCompare(b.detalhes.vencimento)),[vendas]);
   const futurePending = futureSales.filter(v=>!v.comissao_futura_recebida_em);
   const futurePendingAmount = futurePending.reduce((s,v)=>s+v.detalhes.futura,0);
-  const resumo = useMemo(() => {
-    const imediata = vendasPeriodo.reduce((s,v)=>s+calcularComissao(v).imediata,0);
-    const parcelasDoPeriodo = futureSales
-      .filter(v=>selectedMonth==='todos' || v.detalhes.vencimento.slice(0,7)===selectedMonth)
-      .reduce((s,v)=>s+v.detalhes.futura,0);
-    return { previsto: imediata+parcelasDoPeriodo };
-  },[vendasPeriodo,futureSales,selectedMonth]);
+  const futurosRecebidosPeriodo = futureSales.filter(v=>v.comissao_futura_recebida_em && (selectedMonth==='todos'||String(v.comissao_futura_recebida_em).slice(0,7)===selectedMonth));
 
-  const cards = [[
-    'Comissão prevista para receber',
-    brl(resumo.previsto),
-    selectedMonth==='todos'
-      ? 'Total previsto de todos os meses, incluindo as parcelas futuras'
-      : 'Comissões imediatas das vendas do mês + parcelas com vencimento neste mês'
-  ]];
+  const resumo = useMemo(() => {
+    const comissaoImediata=vendasPeriodo.reduce((s,v)=>s+calcularComissao(v).imediata,0);
+    const faturamento=vendasPeriodo.reduce((s,v)=>s+Number(v.valor||0),0);
+    const comissaoAcumulada=vendas.reduce((s,v)=>s+calcularComissao(v).total,0);
+    const recebidas=futurosRecebidosPeriodo.reduce((s,v)=>s+v.detalhes.futura,0);
+    return {comissaoImediata,faturamento,comissaoAcumulada,recebidas};
+  },[vendas,vendasPeriodo,futurosRecebidosPeriodo]);
+
+  const cards=[
+    ['Parcela imediata',brl(resumo.comissaoImediata),'Comissão inicial prevista das vendas do período'],
+    ['Parcelas futuras recebidas',brl(resumo.recebidas),'Confirmadas como recebidas no período selecionado'],
+    ['Faturamento do período',brl(resumo.faturamento),'Vendas registradas no período'],
+    ...(selectedMonth==='todos'?[['Comissão acumulada geral',brl(resumo.comissaoAcumulada),'Total de todos os meses, inclusive parcelas futuras']]:[])
+  ];
 
   const togglePaid=async v => {
     if (readOnly || !updateVenda || updatingId) return;
